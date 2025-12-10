@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import schemas
-from .aes_core import encrypt_text_to_hex, AES_STANDARD_SBOX, validate_sbox
+from .aes_core import encrypt_text_to_hex, AES_STANDARD_SBOX, validate_sbox, decrypt_hex_to_text
 
 app = FastAPI(
     title="AES Custom S-Box API",
@@ -60,4 +60,29 @@ def encrypt(req: schemas.EncryptRequest):
         ciphertext_hex=ciphertext_hex,
         used_mode=req.mode,
         plaintext_len=len(plaintext_str.encode("utf-8")),
+    )
+
+@app.post("/decrypt", response_model=schemas.DecryptResponse)
+def decrypt(req: schemas.DecryptRequest):
+    # pilih S-Box
+    if req.mode == "standard":
+        sbox = AES_STANDARD_SBOX
+    elif req.mode == "custom":
+        if req.sbox is None:
+            raise HTTPException(status_code=400, detail="sbox wajib diisi untuk mode custom")
+        if not validate_sbox(req.sbox):
+            raise HTTPException(status_code=400, detail="sbox tidak valid (harus permutasi 0..255)")
+        sbox = req.sbox
+    else:
+        raise HTTPException(status_code=400, detail="mode harus 'standard' atau 'custom'")
+
+    try:
+        plaintext_str = decrypt_hex_to_text(req.ciphertext_hex, req.key_hex, sbox)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return schemas.DecryptResponse(
+        plaintext=plaintext_str,
+        plaintext_hex=plaintext_str.encode("utf-8").hex(),
+        used_mode=req.mode,
     )

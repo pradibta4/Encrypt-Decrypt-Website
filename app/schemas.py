@@ -44,3 +44,18 @@ class SBoxMetricsResponse(BaseModel):
     ad_min: int
     to_value: float
     ci_min: int
+
+class DecryptRequest(BaseModel):
+    mode: str = Field(..., description="standard atau custom")
+    key_hex: str = Field(..., description="kunci AES 128-bit dalam hex (32 char)")
+    ciphertext_hex: str = Field(..., description="ciphertext dalam hex (hasil encrypt)")
+    sbox: Optional[List[int]] = Field(
+        None,
+        description="list 256 angka 0-255 untuk custom S-Box (wajib kalau mode=custom)",
+    )
+
+
+class DecryptResponse(BaseModel):
+    plaintext: str
+    plaintext_hex: str
+    used_mode: str

@@ -185,3 +185,124 @@ def encrypt_text_to_hex(
     pt_bytes = plaintext.encode("utf-8")
     ct_bytes = aes_encrypt_ecb(pt_bytes, key, sbox)
     return ct_bytes.hex()
+
+# --- fungsi bantu GF(2^8) untuk dekripsi --- #
+
+def gmul(a: int, b: int) -> int:
+    """Perkalian di GF(2^8) dengan polinomial AES (0x11B)."""
+    p = 0
+    for _ in range(8):
+        if b & 1:
+            p ^= a
+        hi_bit_set = a & 0x80
+        a = (a << 1) & 0xFF
+        if hi_bit_set:
+            a ^= 0x1B
+        b >>= 1
+    return p
+
+
+def inv_shift_rows(state: List[List[int]]) -> List[List[int]]:
+    new_state = [row[:] for row in state]
+    # kebalikan shift: geser ke kanan
+    for r in range(4):
+        new_state[r] = state[r][-r:] + state[r][:-r]
+    return new_state
+
+
+def inv_sub_bytes(state: List[List[int]], inv_sbox: List[int]) -> List[List[int]]:
+    return [[inv_sbox[byte] for byte in row] for row in state]
+
+
+def inv_mix_single_column(col: List[int]) -> List[int]:
+    # matrix [0e 0b 0d 09; 09 0e 0b 0d; 0d 09 0e 0b; 0b 0d 09 0e]
+    s0, s1, s2, s3 = col
+    r0 = gmul(s0, 0x0E) ^ gmul(s1, 0x0B) ^ gmul(s2, 0x0D) ^ gmul(s3, 0x09)
+    r1 = gmul(s0, 0x09) ^ gmul(s1, 0x0E) ^ gmul(s2, 0x0B) ^ gmul(s3, 0x0D)
+    r2 = gmul(s0, 0x0D) ^ gmul(s1, 0x09) ^ gmul(s2, 0x0E) ^ gmul(s3, 0x0B)
+    r3 = gmul(s0, 0x0B) ^ gmul(s1, 0x0D) ^ gmul(s2, 0x09) ^ gmul(s3, 0x0E)
+    return [r0, r1, r2, r3]
+
+
+def inv_mix_columns(state: List[List[int]]) -> List[List[int]]:
+    new_state = [[0] * 4 for _ in range(4)]
+    for c in range(4):
+        col = [state[r][c] for r in range(4)]
+        col = inv_mix_single_column(col)
+        for r in range(4):
+            new_state[r][c] = col[r]
+    return new_state
+
+def pkcs7_unpad(data: bytes, block_size: int = 16) -> bytes:
+    if not data or len(data) % block_size != 0:
+        raise ValueError("Data ciphertext tidak kelipatan blok, tidak valid.")
+    pad_len = data[-1]
+    if pad_len < 1 or pad_len > block_size:
+        raise ValueError("Padding tidak valid.")
+    if data[-pad_len:] != bytes([pad_len] * pad_len):
+        raise ValueError("Padding bytes tidak konsisten.")
+    return data[:-pad_len]
+
+
+def aes_decrypt_block(block: bytes, key: bytes, sbox: List[int], inv_sbox: List[int]) -> bytes:
+    assert len(block) == 16
+    state = bytes_to_state(block)
+    round_keys = key_expansion(key, sbox)
+
+    # mulai dari round key terakhir
+    state = add_round_key(state, round_keys[NR])
+
+    for rnd in range(NR - 1, 0, -1):
+        state = inv_shift_rows(state)
+        state = inv_sub_bytes(state, inv_sbox)
+        state = add_round_key(state, round_keys[rnd])
+        state = inv_mix_columns(state)
+
+    # final round tanpa inv_mix_columns
+    state = inv_shift_rows(state)
+    state = inv_sub_bytes(state, inv_sbox)
+    state = add_round_key(state, round_keys[0])
+
+    return state_to_bytes(state)
+
+
+def aes_decrypt_ecb(ciphertext: bytes, key: bytes, sbox: List[int], inv_sbox: List[int]) -> bytes:
+    if len(ciphertext) % 16 != 0:
+        raise ValueError("Ciphertext harus kelipatan 16 byte (blok AES).")
+    out = bytearray()
+    for i in range(0, len(ciphertext), 16):
+        block = ciphertext[i:i+16]
+        out.extend(aes_decrypt_block(block, key, sbox, inv_sbox))
+    return pkcs7_unpad(bytes(out))
+
+def build_inv_sbox(sbox: List[int]) -> List[int]:
+    inv = [0] * 256
+    for i, v in enumerate(sbox):
+        inv[v] = i
+    return inv
+
+
+def decrypt_hex_to_text(
+    ciphertext_hex: str,
+    key_hex: str,
+    sbox: List[int] | None = None
+) -> str:
+    if sbox is None:
+        sbox = AES_STANDARD_SBOX
+
+    if not validate_sbox(sbox):
+        raise ValueError("S-Box tidak valid (harus permutasi 0..255)")
+
+    key = bytes.fromhex(key_hex)
+    if len(key) != 16:
+        raise ValueError("Key harus 128-bit (16 byte, 32 hex char)")
+
+    try:
+        ct_bytes = bytes.fromhex(ciphertext_hex)
+    except ValueError:
+        raise ValueError("ciphertext_hex bukan hex yang valid")
+
+    inv_sbox = build_inv_sbox(sbox)
+    pt_bytes = aes_decrypt_ecb(ct_bytes, key, sbox, inv_sbox)
+    return pt_bytes.decode("utf-8", errors="replace")
+

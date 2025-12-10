@@ -59,3 +59,10 @@ class DecryptResponse(BaseModel):
     plaintext: str
     plaintext_hex: str
     used_mode: str
+
+
+class EncryptFileResponse(BaseModel):
+    filename: str
+    size_plain: int
+    size_cipher: int
+    ciphertext_hex: str

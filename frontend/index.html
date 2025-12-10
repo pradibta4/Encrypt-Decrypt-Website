@@ -8,150 +8,263 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen">
-  <div class="max-w-3xl mx-auto py-10 px-4">
-    <h1 class="text-3xl font-bold mb-2">AES Encryption Lab</h1>
-    <p class="text-sm text-slate-300 mb-6">
-      Enkripsi plaintext pakai AES Standard S-Box atau Custom S-Box. Backend: FastAPI di <code>http://127.0.0.1:8000</code>.
-    </p>
+  <div class="max-w-5xl mx-auto py-10 px-4 space-y-8">
+    <header>
+      <h1 class="text-3xl font-bold mb-2">AES Encryption Lab</h1>
+      <p class="text-sm text-slate-300">
+        Enkripsi / dekripsi teks dan file dengan AES-128 (ECB + PKCS#7) menggunakan Standard atau Custom S-Box.
+        Backend: <code>http://127.0.0.1:8000</code>.
+      </p>
+    </header>
 
-    <!-- FORM ENCRYPT -->
-    <div class="bg-slate-800 rounded-2xl p-5 mb-6 shadow-lg border border-slate-700">
-      <h2 class="font-semibold mb-4 text-lg">Encrypt Text</h2>
-
-      <!-- Mode -->
-      <label class="block text-sm mb-1 font-medium">Mode</label>
-      <select id="mode" class="w-full mb-4 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm">
-        <option value="standard">AES Standard S-Box</option>
-        <option value="custom">Custom S-Box</option>
-      </select>
-
-      <!-- Key -->
-      <label class="block text-sm mb-1 font-medium">
-        Key (128-bit, hex 32 karakter)
-      </label>
-      <input
-        id="key_hex"
-        type="text"
-        class="w-full mb-4 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm font-mono"
-        placeholder="000102030405060708090a0b0c0d0e0f"
-      />
-
-      <!-- Plaintext -->
-      <label class="block text-sm mb-1 font-medium">Plaintext</label>
-      <textarea
-        id="plaintext"
-        rows="3"
-        class="w-full mb-4 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm"
-        placeholder="Tulis plaintext di sini..."
-      ></textarea>
-
-      <!-- Custom S-Box (opsional) -->
-      <div id="sbox-wrapper" class="hidden mt-2">
-        <label class="block text-sm mb-1 font-medium">
-          Custom S-Box (256 angka 0–255, dipisah koma / spasi)
-        </label>
-        <textarea
-          id="sbox_input"
-          rows="4"
-          class="w-full mb-4 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
-          placeholder="contoh: 99,124,119,123, ..."
-        ></textarea>
+    <!-- Encrypt Text -->
+    <section class="bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-700">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-lg">Encrypt Text</h2>
+        <span class="text-xs text-slate-400">/encrypt</span>
       </div>
 
-      <!-- Tombol -->
-      <button
-        id="encrypt_btn"
-        class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold transition"
-      >
-        Encrypt
-      </button>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">Mode</label>
+            <select id="mode" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm">
+              <option value="standard">AES Standard S-Box</option>
+              <option value="custom">Custom S-Box</option>
+            </select>
+          </div>
 
-      <!-- Error -->
+          <div>
+            <label class="block text-sm font-medium mb-1">Key (128-bit, hex 32 karakter)</label>
+            <input
+              id="key_hex"
+              type="text"
+              class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm font-mono"
+              placeholder="000102030405060708090a0b0c0d0e0f"
+            />
+          </div>
+
+          <div id="sbox-wrapper" class="hidden">
+            <label class="block text-sm font-medium mb-1">Custom S-Box (256 angka 0-255, pisah koma/spasi)</label>
+            <textarea
+              id="sbox_input"
+              rows="4"
+              class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
+              placeholder="contoh: 99,124,119,123, ..."
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">Plaintext</label>
+            <textarea
+              id="plaintext"
+              rows="6"
+              class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm"
+              placeholder="Tulis plaintext di sini..."
+            ></textarea>
+          </div>
+          <button
+            id="encrypt_btn"
+            type="button"
+            class="w-full px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold transition"
+          >
+            Encrypt
+          </button>
+        </div>
+      </div>
+
       <p id="error_msg" class="text-red-400 text-xs mt-3 hidden"></p>
-    </div>
 
-    <!-- HASIL -->
-    <div class="bg-slate-800 rounded-2xl p-5 shadow-lg border border-slate-700">
-      <h2 class="font-semibold mb-3 text-lg">Hasil Ciphertext</h2>
-      <textarea
-        id="ciphertext_output"
-        rows="4"
-        readonly
-        class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
-      ></textarea>
-      <p id="info_msg" class="text-xs text-slate-400 mt-2"></p>
-    </div>
-  </div>
-
-      <!-- ... setelah card Encrypt ... -->
-
-    <!-- FORM DECRYPT -->
-    <div class="bg-slate-800 rounded-2xl p-5 mb-6 shadow-lg border border-slate-700 mt-8">
-      <h2 class="font-semibold mb-4 text-lg">Decrypt Ciphertext</h2>
-
-      <!-- Mode -->
-      <label class="block text-sm mb-1 font-medium">Mode</label>
-      <select id="dec_mode" class="w-full mb-4 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm">
-        <option value="standard">AES Standard S-Box</option>
-        <option value="custom">Custom S-Box</option>
-      </select>
-
-      <!-- Key -->
-      <label class="block text-sm mb-1 font-medium">
-        Key (128-bit, hex 32 karakter)
-      </label>
-      <input
-        id="dec_key_hex"
-        type="text"
-        class="w-full mb-4 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm font-mono"
-        placeholder="000102030405060708090a0b0c0d0e0f"
-      />
-
-      <!-- Ciphertext -->
-      <label class="block text-sm mb-1 font-medium">Ciphertext (hex)</label>
-      <textarea
-        id="ciphertext_input"
-        rows="3"
-        class="w-full mb-4 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
-        placeholder="Masukkan ciphertext hex di sini..."
-      ></textarea>
-
-      <!-- Custom S-Box (opsional) -->
-      <div id="dec-sbox-wrapper" class="hidden mt-2">
-        <label class="block text-sm mb-1 font-medium">
-          Custom S-Box (256 angka 0–255, dipisah koma / spasi)
-        </label>
+      <div class="mt-4">
+        <label class="block text-sm font-medium mb-1">Ciphertext (hex)</label>
         <textarea
-          id="dec_sbox_input"
+          id="ciphertext_output"
           rows="4"
-          class="w-full mb-4 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
-          placeholder="contoh: 99,124,119,123, ..."
+          readonly
+          class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
         ></textarea>
+        <p id="info_msg" class="text-xs text-slate-400 mt-2"></p>
+      </div>
+    </section>
+
+    <!-- Decrypt Text -->
+    <section class="bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-700">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-lg">Decrypt Ciphertext</h2>
+        <span class="text-xs text-slate-400">/decrypt</span>
       </div>
 
-      <!-- Tombol -->
-      <button
-        id="decrypt_btn"
-        class="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-sm font-semibold transition"
-      >
-        Decrypt
-      </button>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">Mode</label>
+            <select id="dec_mode" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm">
+              <option value="standard">AES Standard S-Box</option>
+              <option value="custom">Custom S-Box</option>
+            </select>
+          </div>
 
-      <!-- Error -->
+          <div>
+            <label class="block text-sm font-medium mb-1">Key (128-bit, hex 32 karakter)</label>
+            <input
+              id="dec_key_hex"
+              type="text"
+              class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm font-mono"
+              placeholder="000102030405060708090a0b0c0d0e0f"
+            />
+          </div>
+
+          <div id="dec-sbox-wrapper" class="hidden">
+            <label class="block text-sm font-medium mb-1">Custom S-Box (256 angka 0-255, pisah koma/spasi)</label>
+            <textarea
+              id="dec_sbox_input"
+              rows="4"
+              class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
+              placeholder="contoh: 99,124,119,123, ..."
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">Ciphertext (hex)</label>
+            <textarea
+              id="ciphertext_input"
+              rows="6"
+              class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
+              placeholder="Masukkan ciphertext hex di sini..."
+            ></textarea>
+          </div>
+          <button
+            id="decrypt_btn"
+            type="button"
+            class="w-full px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-sm font-semibold transition"
+          >
+            Decrypt
+          </button>
+        </div>
+      </div>
+
       <p id="dec_error_msg" class="text-red-400 text-xs mt-3 hidden"></p>
-    </div>
 
-    <!-- HASIL DECRYPT -->
-    <div class="bg-slate-800 rounded-2xl p-5 shadow-lg border border-slate-700 mb-10">
-      <h2 class="font-semibold mb-3 text-lg">Hasil Plaintext</h2>
-      <textarea
-        id="plaintext_output"
-        rows="3"
-        readonly
-        class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm"
-      ></textarea>
-      <p id="dec_info_msg" class="text-xs text-slate-400 mt-2"></p>
-    </div>
+      <div class="mt-4">
+        <label class="block text-sm font-medium mb-1">Plaintext</label>
+        <textarea
+          id="plaintext_output"
+          rows="4"
+          readonly
+          class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm"
+        ></textarea>
+        <p id="dec_info_msg" class="text-xs text-slate-400 mt-2"></p>
+      </div>
+    </section>
+
+    <!-- Encrypt File -->
+    <section class="bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-700">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-lg">Encrypt File</h2>
+        <span class="text-xs text-slate-400">/encrypt-file</span>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">Mode</label>
+            <select id="file_mode" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm">
+              <option value="standard">AES Standard S-Box</option>
+              <option value="custom">Custom S-Box</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1">Key (128-bit, hex 32 karakter)</label>
+            <input
+              id="file_key_hex"
+              type="text"
+              class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm font-mono"
+              placeholder="000102030405060708090a0b0c0d0e0f"
+            />
+          </div>
+
+          <div id="file-sbox-wrapper" class="hidden">
+            <label class="block text-sm font-medium mb-1">Custom S-Box (256 angka 0-255, pisah koma/spasi)</label>
+            <textarea
+              id="file_sbox_input"
+              rows="4"
+              class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
+              placeholder="contoh: 99,124,119,123, ..."
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">File (.txt/.json/.xls/.xlsx)</label>
+            <input
+              id="file_input"
+              type="file"
+              accept=".txt,.json,.xls,.xlsx"
+              class="w-full text-sm bg-slate-900 border border-slate-700 rounded-xl px-3 py-2"
+            />
+          </div>
+          <button
+            id="file_encrypt_btn"
+            type="button"
+            class="w-full px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-sm font-semibold transition"
+          >
+            Encrypt File
+          </button>
+        </div>
+      </div>
+
+      <p id="file_error_msg" class="text-red-400 text-xs mt-3 hidden"></p>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium mb-1">Ciphertext (hex)</label>
+        <textarea
+          id="file_ciphertext_output"
+          rows="4"
+          readonly
+          class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
+        ></textarea>
+        <p id="file_info_msg" class="text-xs text-slate-400 mt-2"></p>
+      </div>
+    </section>
+
+    <!-- Analisis S-Box -->
+    <section class="bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-700 mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-lg">Analisis S-Box</h2>
+        <span class="text-xs text-slate-400">/sbox/metrics</span>
+      </div>
+
+      <div class="space-y-3">
+        <label class="block text-sm font-medium mb-1">S-Box (256 angka 0-255, pisah koma/spasi)</label>
+        <textarea
+          id="metrics_sbox_input"
+          rows="4"
+          class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
+          placeholder="99,124,119,123, ..."
+        ></textarea>
+
+        <button
+          id="metrics_btn"
+          type="button"
+          class="w-full px-4 py-2 rounded-xl bg-purple-500 hover:bg-purple-600 text-sm font-semibold transition"
+        >
+          Analisis S-Box
+        </button>
+
+        <p id="metrics_error_msg" class="text-red-400 text-xs mt-2 hidden"></p>
+
+        <div id="metrics_output" class="text-sm text-slate-200 space-y-1 bg-slate-900 border border-slate-700 rounded-xl p-3">
+          <p class="text-slate-500 text-xs">Hasil metric akan muncul di sini.</p>
+        </div>
+      </div>
+    </section>
+  </div>
 
   <script src="./main.js"></script>
 </body>

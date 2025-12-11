@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import json
+import secrets
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import schemas
 from .aes_core import (
     AES_STANDARD_SBOX,
-    aes_encrypt_ecb,
+    derive_key_from_input,
     decrypt_hex_to_text,
     encrypt_text_to_hex,
     validate_sbox,
@@ -109,32 +110,6 @@ def decrypt(req: schemas.DecryptRequest):
     )
 
 
-@app.post("/encrypt-file", response_model=schemas.EncryptFileResponse)
-async def encrypt_file(
-    mode: str = Form(...),
-    key_hex: str = Form(...),
-    file: UploadFile = File(...),
-    sbox_json: str | None = Form(None),
-):
-    sbox = _resolve_sbox_from_form(mode, sbox_json)
-
-    try:
-        key = bytes.fromhex(key_hex)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="key_hex bukan hex yang valid")
-    if len(key) != 16:
-        raise HTTPException(status_code=400, detail="Key harus 128-bit (16 byte, 32 hex char)")
-
-    data = await file.read()
-    ct_bytes = aes_encrypt_ecb(data, key, sbox)
-    return {
-        "filename": file.filename,
-        "size_plain": len(data),
-        "size_cipher": len(ct_bytes),
-        "ciphertext_hex": ct_bytes.hex(),
-    }
-
-
 @app.post("/sbox/metrics", response_model=schemas.SBoxMetricsResponse)
 def sbox_metrics(req: schemas.SBoxMetricsRequest):
     if not validate_sbox(req.sbox):
@@ -144,3 +119,60 @@ def sbox_metrics(req: schemas.SBoxMetricsRequest):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return schemas.SBoxMetricsResponse(**metrics)
+
+
+def random_invertible_matrix_8() -> list[list[int]]:
+    """
+    Generate matriks 8x8 invertible di GF(2) dengan operasi baris acak.
+    Mulai dari identity lalu swap/XOR baris.
+    """
+    rng = secrets.SystemRandom()
+    mat = [[1 if i == j else 0 for j in range(8)] for i in range(8)]
+    for _ in range(32):
+        i = rng.randrange(8)
+        j = rng.randrange(8)
+        if i == j:
+            continue
+        if rng.randrange(2) == 0:
+            mat[i], mat[j] = mat[j], mat[i]
+        else:
+            mat[i] = [a ^ b for a, b in zip(mat[i], mat[j])]
+    return mat
+
+
+@app.get("/sbox/generate", response_model=schemas.SBoxGenerateResponse)
+def sbox_generate():
+    rng = secrets.SystemRandom()
+    sbox = list(range(256))
+    rng.shuffle(sbox)
+    affine_matrix = random_invertible_matrix_8()
+    metrics = analyze_sbox(sbox)
+    return schemas.SBoxGenerateResponse(
+        sbox=sbox,
+        metrics=schemas.SBoxMetricsResponse(**metrics),
+        affine_matrix=affine_matrix,
+    )
+
+
+@app.post("/sbox/upload", response_model=schemas.SBoxUploadResponse)
+async def sbox_upload(file: UploadFile = File(...)):
+    if not file.filename.lower().endswith(".json"):
+        raise HTTPException(status_code=400, detail="File harus berformat .json")
+    try:
+        raw = await file.read()
+        data = json.loads(raw.decode("utf-8"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Gagal membaca/parse JSON")
+
+    if isinstance(data, list):
+        sbox = data
+    elif isinstance(data, dict) and "sbox" in data:
+        sbox = data.get("sbox")
+    else:
+        raise HTTPException(status_code=400, detail="JSON harus berupa array atau object dengan key 'sbox'")
+
+    if not validate_sbox(sbox):
+        raise HTTPException(status_code=400, detail="sbox tidak valid (harus permutasi unik 0..255)")
+
+    metrics = analyze_sbox(sbox)
+    return schemas.SBoxUploadResponse(sbox=sbox, metrics=schemas.SBoxMetricsResponse(**metrics))

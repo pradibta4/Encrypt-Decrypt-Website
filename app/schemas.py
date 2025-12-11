@@ -9,7 +9,7 @@ class EncryptMode(str):
 
 class EncryptRequest(BaseModel):
     mode: str = Field(..., description="standard atau custom")
-    key_hex: str = Field(..., description="kunci AES 128-bit dalam hex (32 char)")
+    key_hex: str = Field(..., description="kunci input (teks bebas atau 32 char hex)")
     plaintext: Optional[str] = Field(
         None,
         description="plaintext dalam bentuk string biasa, akan di-encode UTF-8",
@@ -41,13 +41,20 @@ class SBoxMetricsResponse(BaseModel):
     bic_sac_score: float
     lap_max_bias: float
     du: int
+    dap_max: float
     ad_min: int
     to_value: float
     ci_min: int
 
+
+class SBoxGenerateResponse(BaseModel):
+    sbox: List[int]
+    metrics: SBoxMetricsResponse
+    affine_matrix: List[List[int]]
+
 class DecryptRequest(BaseModel):
     mode: str = Field(..., description="standard atau custom")
-    key_hex: str = Field(..., description="kunci AES 128-bit dalam hex (32 char)")
+    key_hex: str = Field(..., description="kunci input (teks bebas atau 32 char hex)")
     ciphertext_hex: str = Field(..., description="ciphertext dalam hex (hasil encrypt)")
     sbox: Optional[List[int]] = Field(
         None,
@@ -61,8 +68,3 @@ class DecryptResponse(BaseModel):
     used_mode: str
 
 
-class EncryptFileResponse(BaseModel):
-    filename: str
-    size_plain: int
-    size_cipher: int
-    ciphertext_hex: str

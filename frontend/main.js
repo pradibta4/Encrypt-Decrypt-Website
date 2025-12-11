@@ -1,4 +1,6 @@
 const API_BASE = "http://127.0.0.1:8000";
+let currentSBox = null;
+let currentAffineMatrix = null;
 
 function parseSBox(text) {
   const raw = text
@@ -52,11 +54,7 @@ async function handleEncryptText() {
   const plaintext = plaintextInput.value;
 
   if (!keyHex) {
-    showError(errorMsg, "Key hex wajib diisi.");
-    return;
-  }
-  if (keyHex.length !== 32) {
-    showError(errorMsg, "Key harus 32 karakter hex (128-bit).");
+    showError(errorMsg, "Key wajib diisi (boleh teks bebas atau hex).");
     return;
   }
   if (!plaintext) {
@@ -110,11 +108,7 @@ async function handleDecryptText() {
   const ciphertextHex = ciphertextInput.value.trim();
 
   if (!keyHex) {
-    showError(decErrorMsg, "Key hex wajib diisi.");
-    return;
-  }
-  if (keyHex.length !== 32) {
-    showError(decErrorMsg, "Key harus 32 karakter hex (128-bit).");
+    showError(decErrorMsg, "Key wajib diisi (boleh teks bebas atau hex).");
     return;
   }
   if (!ciphertextHex) {
@@ -157,115 +151,147 @@ async function handleDecryptText() {
   }
 }
 
-async function handleEncryptFile() {
-  clearError(fileErrorMsg);
-  fileCiphertextOutput.value = "";
-  fileInfoMsg.textContent = "";
-
-  const mode = fileModeSelect.value;
-  const keyHex = fileKeyInput.value.trim();
-  const file = fileInput.files[0];
-
-  if (!keyHex) {
-    showError(fileErrorMsg, "Key hex wajib diisi.");
-    return;
-  }
-  if (keyHex.length !== 32) {
-    showError(fileErrorMsg, "Key harus 32 karakter hex (128-bit).");
-    return;
-  }
-  if (!file) {
-    showError(fileErrorMsg, "File wajib dipilih.");
-    return;
-  }
-
-  let sboxJson = null;
-  if (mode === "custom") {
-    try {
-      const parsed = parseSBox(fileSboxInput.value);
-      sboxJson = JSON.stringify(parsed);
-    } catch (e) {
-      showError(fileErrorMsg, e.message);
-      return;
-    }
-  }
-
-  const form = new FormData();
-  form.append("mode", mode);
-  form.append("key_hex", keyHex);
-  form.append("file", file);
-  if (sboxJson) {
-    form.append("sbox_json", sboxJson);
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/encrypt-file`, {
-      method: "POST",
-      body: form,
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.detail || "Terjadi error saat enkripsi file.");
-    }
-    const data = await res.json();
-    fileCiphertextOutput.value = data.ciphertext_hex || "";
-    fileInfoMsg.textContent = `File: ${data.filename} | Plain: ${data.size_plain} byte | Cipher: ${data.size_cipher} byte`;
-  } catch (err) {
-    showError(fileErrorMsg, err.message);
-  }
-}
-
 function renderMetrics(metrics) {
   const entries = [
-    ["nl_min", metrics.nl_min],
-    ["sac_avg", metrics.sac_avg],
-    ["bic_nl_min", metrics.bic_nl_min],
-    ["bic_sac_score", metrics.bic_sac_score],
-    ["lap_max_bias", metrics.lap_max_bias],
-    ["du", metrics.du],
-    ["ad_min", metrics.ad_min],
-    ["ci_min", metrics.ci_min],
-    ["to_value (placeholder)", metrics.to_value],
+    ["Nonlinearity (min)", metrics.nl_min],
+    ["SAC (avg)", metrics.sac_avg],
+    ["BIC-NL (min)", metrics.bic_nl_min],
+    ["BIC-SAC (deviasi rata-rata)", metrics.bic_sac_score],
+    ["LAP max bias", metrics.lap_max_bias],
+    ["DU", metrics.du],
+    ["DAP max", metrics.dap_max],
+    ["Algebraic Degree (min)", metrics.ad_min],
+    ["Correlation Immunity (min)", metrics.ci_min],
+    ["Transparency Order (TO)", metrics.to_value],
   ];
 
-  metricsOutput.innerHTML = "";
+  metricsResult.innerHTML = "";
   entries.forEach(([label, value]) => {
     const p = document.createElement("p");
     p.className = "flex justify-between";
     p.innerHTML = `<span class="text-slate-400">${label}</span><span class="font-mono">${value}</span>`;
-    metricsOutput.appendChild(p);
+    metricsResult.appendChild(p);
   });
 }
 
-async function handleMetrics() {
-  clearError(metricsErrorMsg);
-  metricsOutput.innerHTML = '<p class="text-slate-500 text-xs">Memproses...</p>';
-
-  let sbox = null;
-  try {
-    sbox = parseSBox(metricsSboxInput.value);
-  } catch (e) {
-    showError(metricsErrorMsg, e.message);
-    metricsOutput.innerHTML = '<p class="text-slate-500 text-xs">Hasil metric akan muncul di sini.</p>';
+function renderSboxTable(sbox) {
+  if (!sboxDisplay) return;
+  sboxDisplay.innerHTML = "";
+  if (!Array.isArray(sbox) || sbox.length !== 256) {
+    sboxDisplay.innerHTML = '<p class="text-xs text-slate-500 col-span-16">S-Box belum tersedia</p>';
     return;
   }
+  sbox.forEach((v) => {
+    const cell = document.createElement("div");
+    cell.className = "px-2 py-1 bg-slate-800 rounded text-center";
+    cell.textContent = v.toString(16).padStart(2, "0");
+    sboxDisplay.appendChild(cell);
+  });
+}
 
+function renderAffineMatrix(mat) {
+  if (!affineMatrixDisplay) return;
+  if (!Array.isArray(mat) || mat.length !== 8) {
+    affineMatrixDisplay.innerHTML = "";
+    return;
+  }
+  let html = '<div class="overflow-auto max-h-40 border border-slate-700 rounded-xl"><table class="text-[11px] font-mono border-collapse w-full">';
+  for (let i = 0; i < 8; i++) {
+    html += "<tr>";
+    const row = mat[i] || [];
+    for (let j = 0; j < 8; j++) {
+      const v = row[j] ?? 0;
+      html += `<td class="px-1 py-0.5 text-center border border-slate-800">${v}</td>`;
+    }
+    html += "</tr>";
+  }
+  html += "</table></div>";
+  affineMatrixDisplay.innerHTML = html;
+}
+
+function updateAffineText(mat) {
+  if (!affineMatrixText) return;
+  if (!Array.isArray(mat) || mat.length !== 8) {
+    affineMatrixText.value = "";
+    return;
+  }
+  affineMatrixText.value = mat.map((row) => (row || []).join(", ")).join("\n");
+}
+
+function setCurrentSBox(sbox) {
+  currentSBox = sbox;
+  if (Array.isArray(sbox) && sbox.length === 256) {
+    renderSboxTable(sbox);
+  }
+}
+
+async function handleGenerateSbox() {
+  clearError(metricsErrorMsg);
+  metricsResult.innerHTML = '<p class="text-slate-500 text-xs">Memproses...</p>';
   try {
-    const res = await fetch(`${API_BASE}/sbox/metrics`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sbox }),
-    });
+    const res = await fetch(`${API_BASE}/sbox/generate`);
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.detail || "Terjadi error saat analisis S-Box.");
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Gagal generate S-Box.");
     }
     const data = await res.json();
-    renderMetrics(data);
-  } catch (err) {
-    showError(metricsErrorMsg, err.message);
-    metricsOutput.innerHTML = '<p class="text-slate-500 text-xs">Hasil metric akan muncul di sini.</p>';
+    setCurrentSBox(data.sbox);
+    currentAffineMatrix = data.affine_matrix || null;
+    renderMetrics(data.metrics);
+    renderAffineMatrix(currentAffineMatrix);
+    updateAffineText(currentAffineMatrix);
+  } catch (e) {
+    showError(metricsErrorMsg, e.message);
+    metricsResult.innerHTML = '<p class="text-slate-500 text-xs">Hasil metric akan muncul di sini.</p>';
   }
+}
+
+async function handleUploadSbox(file) {
+  if (!file) return;
+  clearError(metricsErrorMsg);
+  metricsResult.innerHTML = '<p class="text-slate-500 text-xs">Memproses...</p>';
+  const form = new FormData();
+  form.append("file", file);
+  try {
+    const res = await fetch(`${API_BASE}/sbox/upload`, {
+      method: "POST",
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Gagal upload S-Box.");
+    }
+    const data = await res.json();
+    setCurrentSBox(data.sbox);
+    renderMetrics(data.metrics);
+    currentAffineMatrix = null;
+    renderAffineMatrix(null);
+    updateAffineText(null);
+  } catch (e) {
+    showError(metricsErrorMsg, e.message);
+    metricsResult.innerHTML = '<p class="text-slate-500 text-xs">Hasil metric akan muncul di sini.</p>';
+  } finally {
+    if (uploadSboxFile) uploadSboxFile.value = "";
+  }
+}
+
+function handleDownloadSbox() {
+  if (!Array.isArray(currentSBox) || currentSBox.length !== 256) {
+    showError(metricsErrorMsg, "Belum ada S-Box untuk di-download.");
+    return;
+  }
+  clearError(metricsErrorMsg);
+  const blob = new Blob([JSON.stringify({ sbox: currentSBox }, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "sbox.json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -279,13 +305,15 @@ document.addEventListener("DOMContentLoaded", () => {
   decryptBtn.addEventListener("click", handleDecryptText);
   toggleSBox(decModeSelect, decSboxWrapper);
 
-  // Encrypt file
-  fileModeSelect.addEventListener("change", () => toggleSBox(fileModeSelect, fileSboxWrapper));
-  fileEncryptBtn.addEventListener("click", handleEncryptFile);
-  toggleSBox(fileModeSelect, fileSboxWrapper);
+  // S-Box lab
+  if (generateSboxBtn) generateSboxBtn.addEventListener("click", handleGenerateSbox);
+  if (downloadSboxBtn) downloadSboxBtn.addEventListener("click", handleDownloadSbox);
+  if (uploadSboxFile) uploadSboxFile.addEventListener("change", (e) => handleUploadSbox(e.target.files[0]));
 
-  // Metrics
-  metricsBtn.addEventListener("click", handleMetrics);
+  // init table state
+  renderSboxTable(currentSBox);
+  renderAffineMatrix(currentAffineMatrix);
+  updateAffineText(currentAffineMatrix);
 });
 
 // DOM refs
@@ -309,17 +337,11 @@ const plaintextOutput = document.getElementById("plaintext_output");
 const decInfoMsg = document.getElementById("dec_info_msg");
 const decErrorMsg = document.getElementById("dec_error_msg");
 
-const fileModeSelect = document.getElementById("file_mode");
-const fileSboxWrapper = document.getElementById("file-sbox-wrapper");
-const fileKeyInput = document.getElementById("file_key_hex");
-const fileInput = document.getElementById("file_input");
-const fileSboxInput = document.getElementById("file_sbox_input");
-const fileEncryptBtn = document.getElementById("file_encrypt_btn");
-const fileCiphertextOutput = document.getElementById("file_ciphertext_output");
-const fileInfoMsg = document.getElementById("file_info_msg");
-const fileErrorMsg = document.getElementById("file_error_msg");
-
-const metricsSboxInput = document.getElementById("metrics_sbox_input");
-const metricsBtn = document.getElementById("metrics_btn");
-const metricsOutput = document.getElementById("metrics_output");
+const metricsResult = document.getElementById("metrics_result");
 const metricsErrorMsg = document.getElementById("metrics_error_msg");
+const generateSboxBtn = document.getElementById("generate_sbox_btn");
+const downloadSboxBtn = document.getElementById("download_sbox_btn");
+const uploadSboxFile = document.getElementById("upload_sbox_file");
+const sboxDisplay = document.getElementById("sbox_display");
+const affineMatrixDisplay = document.getElementById("affine_matrix_display");
+const affineMatrixText = document.getElementById("affine_matrix_text");

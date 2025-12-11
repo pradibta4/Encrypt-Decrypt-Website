@@ -35,12 +35,12 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium mb-1">Key (128-bit, hex 32 karakter)</label>
+            <label class="block text-sm font-medium mb-1">Key (boleh teks bebas atau 32 karakter hex)</label>
             <input
               id="key_hex"
               type="text"
               class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm font-mono"
-              placeholder="000102030405060708090a0b0c0d0e0f"
+              placeholder="contoh: password123 atau 000102030405060708090a0b0c0d0e0f"
             />
           </div>
 
@@ -107,12 +107,12 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium mb-1">Key (128-bit, hex 32 karakter)</label>
+            <label class="block text-sm font-medium mb-1">Key (boleh teks bebas atau 32 karakter hex)</label>
             <input
               id="dec_key_hex"
               type="text"
               class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm font-mono"
-              placeholder="000102030405060708090a0b0c0d0e0f"
+              placeholder="contoh: password123 atau 000102030405060708090a0b0c0d0e0f"
             />
           </div>
 
@@ -161,106 +161,72 @@
       </div>
     </section>
 
-    <!-- Encrypt File -->
-    <section class="bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-700">
+    <!-- Lab S-Box -->
+    <section class="bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-700 mb-8">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="font-semibold text-lg">Encrypt File</h2>
-        <span class="text-xs text-slate-400">/encrypt-file</span>
+        <h2 class="font-semibold text-lg">Lab S-Box</h2>
+        <span class="text-xs text-slate-400">/sbox/generate • /sbox/upload • /sbox/metrics</span>
       </div>
 
       <div class="grid md:grid-cols-2 gap-4">
         <div class="space-y-3">
-          <div>
-            <label class="block text-sm font-medium mb-1">Mode</label>
-            <select id="file_mode" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm">
-              <option value="standard">AES Standard S-Box</option>
-              <option value="custom">Custom S-Box</option>
-            </select>
+          <div class="flex flex-wrap gap-2">
+            <button
+              id="generate_sbox_btn"
+              type="button"
+              class="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-xs font-semibold transition"
+            >
+              Generate S-Box
+            </button>
+            <button
+              id="download_sbox_btn"
+              type="button"
+              class="px-3 py-2 rounded-xl bg-slate-600 hover:bg-slate-500 text-xs font-semibold transition"
+            >
+              Download S-Box (JSON)
+            </button>
+            <label class="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-xs font-semibold transition cursor-pointer">
+              Upload S-Box (JSON)
+              <input id="upload_sbox_file" type="file" accept=".json" class="hidden" />
+            </label>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium mb-1">Key (128-bit, hex 32 karakter)</label>
-            <input
-              id="file_key_hex"
-              type="text"
-              class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm font-mono"
-              placeholder="000102030405060708090a0b0c0d0e0f"
-            />
-          </div>
+          <label class="block text-sm mb-1 mt-2 font-medium">
+            Affine Matrix (8x8, elemen 0/1 & bisa di-copy. Tiap baris dipisah enter)
+          </label>
+          <textarea
+            id="affine_matrix_text"
+            rows="6"
+            class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
+            placeholder="Klik Generate S-Box untuk melihat affine matrix..."
+            readonly
+          ></textarea>
 
-          <div id="file-sbox-wrapper" class="hidden">
-            <label class="block text-sm font-medium mb-1">Custom S-Box (256 angka 0-255, pisah koma/spasi)</label>
-            <textarea
-              id="file_sbox_input"
-              rows="4"
-              class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
-              placeholder="contoh: 99,124,119,123, ..."
-            ></textarea>
-          </div>
+          <p id="metrics_error_msg" class="text-red-400 text-xs mt-1 hidden"></p>
         </div>
 
         <div class="space-y-3">
           <div>
-            <label class="block text-sm font-medium mb-1">File (.txt/.json/.xls/.xlsx)</label>
-            <input
-              id="file_input"
-              type="file"
-              accept=".txt,.json,.xls,.xlsx"
-              class="w-full text-sm bg-slate-900 border border-slate-700 rounded-xl px-3 py-2"
-            />
+            <p class="text-sm font-medium mb-1">Tabel S-Box (hex)</p>
+            <div id="sbox_table_container" class="border border-slate-700 rounded-xl bg-slate-900 p-2 max-h-64 overflow-auto">
+              <div id="sbox_display" class="grid gap-1 text-xs font-mono text-slate-200" style="grid-template-columns: repeat(16, minmax(0, 1fr));">
+                <!-- cells injected -->
+              </div>
+            </div>
           </div>
-          <button
-            id="file_encrypt_btn"
-            type="button"
-            class="w-full px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-sm font-semibold transition"
-          >
-            Encrypt File
-          </button>
-        </div>
-      </div>
-
-      <p id="file_error_msg" class="text-red-400 text-xs mt-3 hidden"></p>
-
-      <div class="mt-4">
-        <label class="block text-sm font-medium mb-1">Ciphertext (hex)</label>
-        <textarea
-          id="file_ciphertext_output"
-          rows="4"
-          readonly
-          class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
-        ></textarea>
-        <p id="file_info_msg" class="text-xs text-slate-400 mt-2"></p>
-      </div>
-    </section>
-
-    <!-- Analisis S-Box -->
-    <section class="bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-700 mb-8">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="font-semibold text-lg">Analisis S-Box</h2>
-        <span class="text-xs text-slate-400">/sbox/metrics</span>
-      </div>
-
-      <div class="space-y-3">
-        <label class="block text-sm font-medium mb-1">S-Box (256 angka 0-255, pisah koma/spasi)</label>
-        <textarea
-          id="metrics_sbox_input"
-          rows="4"
-          class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
-          placeholder="99,124,119,123, ..."
-        ></textarea>
-
-        <button
-          id="metrics_btn"
-          type="button"
-          class="w-full px-4 py-2 rounded-xl bg-purple-500 hover:bg-purple-600 text-sm font-semibold transition"
-        >
-          Analisis S-Box
-        </button>
-
-        <p id="metrics_error_msg" class="text-red-400 text-xs mt-2 hidden"></p>
-
-        <div id="metrics_output" class="text-sm text-slate-200 space-y-1 bg-slate-900 border border-slate-700 rounded-xl p-3">
-          <p class="text-slate-500 text-xs">Hasil metric akan muncul di sini.</p>
+          <div>
+            <p class="text-sm font-medium mb-1">Hasil Metrik</p>
+            <div id="metrics_result" class="text-sm text-slate-200 space-y-1 bg-slate-900 border border-slate-700 rounded-xl p-3">
+              <p class="text-slate-500 text-xs">Hasil metric akan muncul di sini.</p>
+            </div>
+            <div class="mt-4">
+              <h3 class="text-sm font-semibold mb-2">Affine Matrix (8x8, 0/1)</h3>
+              <div id="affine_matrix_display" class="text-[11px] font-mono text-slate-100"></div>
+              <p class="text-[10px] text-slate-400 mt-1">
+                Ditampilkan untuk S-Box yang di-generate dari tombol "Generate S-Box".
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </section>

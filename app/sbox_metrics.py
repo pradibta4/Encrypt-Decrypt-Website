@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Dict, List
 
+from .aes_core import validate_sbox
+
 
 def _int_to_bits(x: int, width: int = 8) -> List[int]:
     return [(x >> i) & 1 for i in range(width)]
@@ -163,12 +165,8 @@ def lap_max_bias(sbox: List[int]) -> float:
 
 def analyze_sbox(sbox: List[int]) -> Dict[str, float | int]:
     """Hitung metrik utama untuk S-Box 8x8."""
-    if len(sbox) != 256:
-        raise ValueError("S-Box harus punya 256 elemen.")
-    if any((not isinstance(v, int)) or v < 0 or v > 255 for v in sbox):
-        raise ValueError("S-Box harus berisi angka 0..255.")
-    if len(set(sbox)) != 256:
-        raise ValueError("S-Box harus permutasi unik 0..255.")
+    if not validate_sbox(sbox):
+        raise ValueError("S-Box tidak valid (harus permutasi 0..255).")
 
     sbox_bits = _precompute_bits(sbox)
     truth_tables = [_truth_table_for_bit(sbox_bits, i) for i in range(8)]
@@ -187,6 +185,7 @@ def analyze_sbox(sbox: List[int]) -> Dict[str, float | int]:
     bic_sac_val = bic_sac_score(sbox_bits)
     lap_bias = lap_max_bias(sbox)
     du_val = du_max(sbox)
+    dap_max = du_val / 256.0
 
     # Transparansi orde placeholder
     to_value = 0.0  # TODO: implement transparency order
@@ -198,6 +197,7 @@ def analyze_sbox(sbox: List[int]) -> Dict[str, float | int]:
         "bic_sac_score": bic_sac_val,
         "lap_max_bias": lap_bias,
         "du": du_val,
+        "dap_max": dap_max,
         "ad_min": ad_min,
         "to_value": to_value,
         "ci_min": ci_min,

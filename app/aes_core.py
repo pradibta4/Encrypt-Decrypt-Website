@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from typing import List
 
 AES_STANDARD_SBOX: List[int] = [
@@ -43,6 +44,26 @@ def validate_sbox(sbox: List[int]) -> bool:
     if len(set(sbox)) != 256:
         return False
     return True
+
+
+def derive_key_from_input(key_input: str) -> bytes:
+    """
+    Terima input key bebas (string). Jika berupa hex 16-byte gunakan langsung,
+    jika tidak/kurang panjang, gunakan SHA-256 dan ambil 16 byte pertama.
+    """
+    key_str = key_input.strip()
+    if not key_str:
+        raise ValueError("Key tidak boleh kosong")
+
+    try:
+        key_bytes = bytes.fromhex(key_str)
+        if len(key_bytes) == 16:
+            return key_bytes
+    except ValueError:
+        key_bytes = None
+
+    digest = hashlib.sha256(key_str.encode("utf-8")).digest()
+    return digest[:16]
 
 
 def bytes_to_state(block: bytes) -> List[List[int]]:
@@ -190,7 +211,7 @@ def aes_encrypt_ecb(plaintext: bytes, key: bytes, sbox: List[int]) -> bytes:
 
 def encrypt_text_to_hex(
     plaintext: str,
-    key_hex: str,
+    key_input: str,
     sbox: List[int] | None = None
 ) -> str:
     if sbox is None:
@@ -199,12 +220,7 @@ def encrypt_text_to_hex(
     if not validate_sbox(sbox):
         raise ValueError("S-Box tidak valid (harus permutasi 0..255)")
 
-    try:
-        key = bytes.fromhex(key_hex)
-    except ValueError:
-        raise ValueError("key_hex bukan hex yang valid")
-    if len(key) != 16:
-        raise ValueError("Key harus 128-bit (16 byte, 32 hex char)")
+    key = derive_key_from_input(key_input)
 
     pt_bytes = plaintext.encode("utf-8")
     ct_bytes = aes_encrypt_ecb(pt_bytes, key, sbox)
@@ -308,7 +324,7 @@ def build_inv_sbox(sbox: List[int]) -> List[int]:
 
 def decrypt_hex_to_text(
     ciphertext_hex: str,
-    key_hex: str,
+    key_input: str,
     sbox: List[int] | None = None
 ) -> str:
     if sbox is None:
@@ -317,12 +333,7 @@ def decrypt_hex_to_text(
     if not validate_sbox(sbox):
         raise ValueError("S-Box tidak valid (harus permutasi 0..255)")
 
-    try:
-        key = bytes.fromhex(key_hex)
-    except ValueError:
-        raise ValueError("key_hex bukan hex yang valid")
-    if len(key) != 16:
-        raise ValueError("Key harus 128-bit (16 byte, 32 hex char)")
+    key = derive_key_from_input(key_input)
 
     try:
         ct_bytes = bytes.fromhex(ciphertext_hex)

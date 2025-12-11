@@ -52,6 +52,12 @@ class SBoxGenerateResponse(BaseModel):
     metrics: SBoxMetricsResponse
     affine_matrix: List[List[int]]
 
+# --- Tambahkan ini ---
+class SBoxUploadResponse(BaseModel):
+    sbox: List[int]
+    metrics: SBoxMetricsResponse
+# ---------------------
+
 class DecryptRequest(BaseModel):
     mode: str = Field(..., description="standard atau custom")
     key_hex: str = Field(..., description="kunci input (teks bebas atau 32 char hex)")
@@ -66,5 +72,3 @@ class DecryptResponse(BaseModel):
     plaintext: str
     plaintext_hex: str
     used_mode: str
-
-

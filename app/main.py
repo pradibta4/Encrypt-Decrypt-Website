@@ -221,3 +221,19 @@ async def sbox_upload(file: UploadFile = File(...)):
 
     metrics = analyze_sbox(sbox)
     return schemas.SBoxUploadResponse(sbox=sbox, metrics=schemas.SBoxMetricsResponse(**metrics))
+
+
+@app.post("/sbox/upload_json", response_model=schemas.SBoxUploadResponse)
+async def sbox_upload_json(data: dict):
+    if isinstance(data, list):
+        sbox = data
+    elif isinstance(data, dict) and "sbox" in data:
+        sbox = data.get("sbox")
+    else:
+        raise HTTPException(status_code=400, detail="Data harus berupa array atau object dengan key 'sbox'")
+
+    if not validate_sbox(sbox):
+        raise HTTPException(status_code=400, detail="sbox tidak valid (harus permutasi unik 0..255)")
+
+    metrics = analyze_sbox(sbox)
+    return schemas.SBoxUploadResponse(sbox=sbox, metrics=schemas.SBoxMetricsResponse(**metrics))

@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <title>AES Web - Custom & Standard S-Box</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen">
   <div class="max-w-5xl mx-auto py-10 px-4 space-y-8">
@@ -17,7 +17,6 @@
       </p>
     </header>
 
-    <!-- Encrypt Text -->
     <section class="bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-700">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-semibold text-lg">Encrypt Text</h2>
@@ -89,7 +88,6 @@
       </div>
     </section>
 
-    <!-- Decrypt Text -->
     <section class="bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-700">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-semibold text-lg">Decrypt Ciphertext</h2>
@@ -161,8 +159,7 @@
       </div>
     </section>
 
-    <!-- Lab S-Box -->
-    <section class="bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-700 mb-8">
+    <section class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-700 mb-8">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-semibold text-lg">Lab S-Box</h2>
         <span class="text-xs text-slate-400">/sbox/generate • /sbox/upload • /sbox/metrics</span>
@@ -170,27 +167,56 @@
 
       <div class="grid md:grid-cols-2 gap-4">
         <div class="space-y-3">
-          <div class="flex flex-wrap gap-2">
+          <div class="flex flex-wrap gap-2 items-center">
             <button
               id="generate_sbox_btn"
               type="button"
-              class="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-xs font-semibold transition"
+              class="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 hover:shadow-lg hover:shadow-emerald-500/50 text-xs font-semibold transition-all duration-300 text-white transform hover:scale-105"
             >
-              Generate S-Box
+              Generate New
             </button>
             <button
-              id="download_sbox_btn"
+              id="download_json_btn"
               type="button"
-              class="px-3 py-2 rounded-xl bg-slate-600 hover:bg-slate-500 text-xs font-semibold transition"
+              class="px-3 py-2 rounded-xl bg-slate-600 hover:bg-slate-500 text-xs font-semibold transition text-white"
             >
-              Download S-Box (JSON)
+              Download S-Box(JSON)
             </button>
-            <label class="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-xs font-semibold transition cursor-pointer">
-              Upload S-Box (JSON)
-              <input id="upload_sbox_file" type="file" accept=".json" class="hidden" />
+            <button
+              id="download_excel_btn"
+              type="button"
+              class="px-3 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-xs font-semibold transition text-white"
+            >
+              Download S-Box(Excel)
+            </button>
+            <label class="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-xs font-semibold transition cursor-pointer text-white">
+              Upload (JSON/Excel)
+              <input id="upload_sbox_file" type="file" accept=".json, .xlsx, .xls" class="hidden" />
             </label>
           </div>
 
+          <label class="block text-sm mb-1 mt-2 font-medium text-emerald-400">
+            S-Box Decimal (Salin ini ke input Custom S-Box)
+          </label>
+          <div class="flex items-center gap-2">
+            <textarea
+              id="sbox_decimal_text"
+              rows="3"
+              class="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono mb-2"
+              placeholder="Hasil generate berupa angka 0-255 akan muncul di sini..."
+              readonly
+            ></textarea>
+            <button
+              id="copy_sbox_btn"
+              type="button"
+              class="px-3 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-xs font-semibold transition text-white"
+              title="Salin angka koma (untuk paste di Custom S-Box)"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="currentColor"/>
+              </svg>
+            </button>
+          </div>
           <label class="block text-sm mb-1 mt-2 font-medium">
             Affine Matrix (8x8, elemen 0/1 & bisa di-copy. Tiap baris dipisah enter)
           </label>
@@ -209,22 +235,21 @@
           <div>
             <p class="text-sm font-medium mb-1">Tabel S-Box (hex)</p>
             <div id="sbox_table_container" class="border border-slate-700 rounded-xl bg-slate-900 p-2 max-h-64 overflow-auto">
-              <div id="sbox_display" class="grid gap-1 text-xs font-mono text-slate-200" style="grid-template-columns: repeat(16, minmax(0, 1fr));">
-                <!-- cells injected -->
-              </div>
+              <div id="sbox_display" class="mt-4"></div>
+                </div>
             </div>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold mb-2">Affine Matrix (8x8, 0/1)</h3>
+            <div id="affine_matrix_display" class="text-[11px] font-mono text-slate-100"></div>
+            <p class="text-[10px] text-slate-400 mt-1">
+              Ditampilkan untuk S-Box yang di-generate dari tombol "Generate S-Box".
+            </p>
           </div>
           <div>
             <p class="text-sm font-medium mb-1">Hasil Metrik</p>
             <div id="metrics_result" class="text-sm text-slate-200 space-y-1 bg-slate-900 border border-slate-700 rounded-xl p-3">
               <p class="text-slate-500 text-xs">Hasil metric akan muncul di sini.</p>
-            </div>
-            <div class="mt-4">
-              <h3 class="text-sm font-semibold mb-2">Affine Matrix (8x8, 0/1)</h3>
-              <div id="affine_matrix_display" class="text-[11px] font-mono text-slate-100"></div>
-              <p class="text-[10px] text-slate-400 mt-1">
-                Ditampilkan untuk S-Box yang di-generate dari tombol "Generate S-Box".
-              </p>
             </div>
           </div>
         </div>

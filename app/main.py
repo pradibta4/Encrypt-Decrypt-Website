@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import schemas
 from .aes_core import (
+    AES_INVERSE_TABLE,
     AES_STANDARD_SBOX,
     derive_key_from_input,
     decrypt_hex_to_text,
@@ -139,16 +140,60 @@ def random_invertible_matrix_8() -> list[list[int]]:
             mat[i] = [a ^ b for a, b in zip(mat[i], mat[j])]
     return mat
 
+AES_CONSTANT_C = 0x63 
+
+def apply_affine_transform(val_byte: int, matrix: list[list[int]], constant: int) -> int:
+    """
+    Melakukan transformasi Affine: A * x + c
+    val_byte: nilai input (dari tabel invers)
+    matrix: matriks 8x8 (list of lists)
+    constant: konstanta 8-bit (misal 0x63)
+    """
+    # 1. Ubah byte ke bits (LSB first atau MSB first tergantung konvensi matriks)
+    # Standar AES biasanya melihat bit sebagai vektor kolom [b0, b1, ..., b7]
+    bits = [(val_byte >> i) & 1 for i in range(8)]
+    
+    new_bits = [0] * 8
+    
+    # 2. Perkalian Matriks (GF(2) -> XOR)
+    for row in range(8):
+        acc = 0
+        for col in range(8):
+            # Matriks dikali vektor bits
+            acc ^= (matrix[row][col] & bits[col])
+        new_bits[row] = acc
+    
+    # 3. Ubah kembali bits ke integer
+    res = 0
+    for i in range(8):
+        res |= (new_bits[i] << i)
+    
+    # 4. Tambahkan (XOR) konstanta
+    return res ^ constant
 
 @app.get("/sbox/generate", response_model=schemas.SBoxGenerateResponse)
 def sbox_generate():
-    rng = secrets.SystemRandom()
-    sbox = list(range(256))
-    rng.shuffle(sbox)
+    # 1. Generate Matriks Affine Acak (Eksplorasi sesuai paper)
+    # Paper mencoba miliaran matriks, kita coba generate satu yang random invertible
     affine_matrix = random_invertible_matrix_8()
-    metrics = analyze_sbox(sbox)
+    
+    # 2. Konstruksi S-box menggunakan Invers + Affine
+    # S[x] = Affine(Invers[x])
+    generated_sbox = []
+    for x in range(256):
+        # Ambil nilai invers
+        inv_val = AES_INVERSE_TABLE[x]
+        
+        # Lakukan transformasi affine
+        # Menggunakan konstanta standar 0x63 seperti di paper (C_AES)
+        val = apply_affine_transform(inv_val, affine_matrix, 0x63)
+        generated_sbox.append(val)
+    
+    # 3. Hitung Metrics
+    metrics = analyze_sbox(generated_sbox)
+    
     return schemas.SBoxGenerateResponse(
-        sbox=sbox,
+        sbox=generated_sbox,
         metrics=schemas.SBoxMetricsResponse(**metrics),
         affine_matrix=affine_matrix,
     )
@@ -170,6 +215,22 @@ async def sbox_upload(file: UploadFile = File(...)):
         sbox = data.get("sbox")
     else:
         raise HTTPException(status_code=400, detail="JSON harus berupa array atau object dengan key 'sbox'")
+
+    if not validate_sbox(sbox):
+        raise HTTPException(status_code=400, detail="sbox tidak valid (harus permutasi unik 0..255)")
+
+    metrics = analyze_sbox(sbox)
+    return schemas.SBoxUploadResponse(sbox=sbox, metrics=schemas.SBoxMetricsResponse(**metrics))
+
+
+@app.post("/sbox/upload_json", response_model=schemas.SBoxUploadResponse)
+async def sbox_upload_json(data: dict):
+    if isinstance(data, list):
+        sbox = data
+    elif isinstance(data, dict) and "sbox" in data:
+        sbox = data.get("sbox")
+    else:
+        raise HTTPException(status_code=400, detail="Data harus berupa array atau object dengan key 'sbox'")
 
     if not validate_sbox(sbox):
         raise HTTPException(status_code=400, detail="sbox tidak valid (harus permutasi unik 0..255)")

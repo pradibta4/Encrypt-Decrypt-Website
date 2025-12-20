@@ -154,12 +154,12 @@ async function handleDecryptText() {
 function renderMetrics(metrics) {
   const entries = [
     ["Nonlinearity (min)", metrics.nl_min],
-    ["SAC (avg)", metrics.sac_avg],
+    ["SAC (avg)", metrics.sac_avg.toFixed(5)],
     ["BIC-NL (min)", metrics.bic_nl_min],
-    ["BIC-SAC (deviasi rata-rata)", metrics.bic_sac_score],
-    ["LAP max bias", metrics.lap_max_bias],
+    ["BIC-SAC (deviasi rata-rata)", metrics.bic_sac_score.toFixed(5)],
+    ["LAP max bias", metrics.lap_max_bias.toFixed(5)],
     ["DU", metrics.du],
-    ["DAP max", metrics.dap_max],
+    ["DAP max", metrics.dap_max.toFixed(6)],
     ["Algebraic Degree (min)", metrics.ad_min],
     ["Correlation Immunity (min)", metrics.ci_min],
     ["Transparency Order (TO)", metrics.to_value],
@@ -195,7 +195,6 @@ function renderSboxTable(sbox) {
   sboxDisplay.innerHTML = html;
 }
 
-// FUNGSI BARU: Update Text Area Decimal
 function updateSboxDecimalText(sbox) {
   if (!sboxDecimalText) return;
   if (!Array.isArray(sbox) || sbox.length !== 256) {
@@ -238,7 +237,37 @@ function setCurrentSBox(sbox) {
   currentSBox = sbox;
   if (Array.isArray(sbox) && sbox.length === 256) {
     renderSboxTable(sbox);
-    updateSboxDecimalText(sbox); // Panggil fungsi update text area
+    updateSboxDecimalText(sbox);
+  }
+}
+
+async function handleLoadSbox44() {
+  clearError(metricsErrorMsg);
+  metricsResult.innerHTML = '<p class="text-slate-500 text-xs">Memproses...</p>';
+  try {
+    const res = await fetch(`${API_BASE}/sbox/paper44`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Gagal load S-box 44.");
+    }
+    const data = await res.json();
+    setCurrentSBox(data.sbox);
+    currentAffineMatrix = data.affine_matrix || null;
+    renderMetrics(data.metrics);
+    renderAffineMatrix(currentAffineMatrix);
+    updateAffineText(currentAffineMatrix);
+    
+    // Show paper info
+    metricsResult.innerHTML += `
+      <div class="mt-3 p-3 bg-emerald-900 rounded-lg border border-emerald-600">
+        <p class="text-xs font-semibold text-emerald-200 mb-1">📄 ${data.paper_info.title}</p>
+        <p class="text-[10px] text-emerald-300">${data.paper_info.authors} (${data.paper_info.year})</p>
+        <p class="text-[10px] text-emerald-100 mt-1">${data.paper_info.description}</p>
+      </div>
+    `;
+  } catch (e) {
+    showError(metricsErrorMsg, e.message);
+    metricsResult.innerHTML = '<p class="text-slate-500 text-xs">Hasil metric akan muncul di sini.</p>';
   }
 }
 
@@ -272,7 +301,6 @@ async function handleUploadSbox(file) {
 
   try {
     if (fileName.endsWith('.json')) {
-      // Handle JSON as before
       const form = new FormData();
       form.append("file", file);
       const res = await fetch(`${API_BASE}/sbox/upload`, {
@@ -290,14 +318,12 @@ async function handleUploadSbox(file) {
       renderAffineMatrix(null);
       updateAffineText(null);
     } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-      // Handle Excel
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-      // Assume data is in the sheet, flatten all values
       let values = jsonData.flat().filter(v => v !== undefined && v !== null && !isNaN(parseInt(v, 10)));
 
       if (values.length < 256) {
@@ -312,7 +338,6 @@ async function handleUploadSbox(file) {
         return n;
       });
 
-      // Send to new endpoint
       const res = await fetch(`${API_BASE}/sbox/upload_json`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -408,6 +433,7 @@ document.addEventListener("DOMContentLoaded", () => {
   toggleSBox(decModeSelect, decSboxWrapper);
 
   // S-Box lab
+  if (loadSbox44Btn) loadSbox44Btn.addEventListener("click", handleLoadSbox44);
   if (generateSboxBtn) generateSboxBtn.addEventListener("click", handleGenerateSbox);
   if (copySboxBtn) copySboxBtn.addEventListener("click", handleCopySbox);
   if (downloadJsonBtn) downloadJsonBtn.addEventListener("click", handleDownloadJson);
@@ -418,7 +444,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderSboxTable(currentSBox);
   renderAffineMatrix(currentAffineMatrix);
   updateAffineText(currentAffineMatrix);
-  updateSboxDecimalText(currentSBox); // Init text area
+  updateSboxDecimalText(currentSBox);
 });
 
 // DOM refs
@@ -444,6 +470,7 @@ const decErrorMsg = document.getElementById("dec_error_msg");
 
 const metricsResult = document.getElementById("metrics_result");
 const metricsErrorMsg = document.getElementById("metrics_error_msg");
+const loadSbox44Btn = document.getElementById("load_sbox44_btn");
 const generateSboxBtn = document.getElementById("generate_sbox_btn");
 const copySboxBtn = document.getElementById("copy_sbox_btn");
 const downloadJsonBtn = document.getElementById("download_json_btn");
@@ -452,4 +479,4 @@ const uploadSboxFile = document.getElementById("upload_sbox_file");
 const sboxDisplay = document.getElementById("sbox_display");
 const affineMatrixDisplay = document.getElementById("affine_matrix_display");
 const affineMatrixText = document.getElementById("affine_matrix_text");
-const sboxDecimalText = document.getElementById("sbox_decimal_text"); // NEW REF
+const sboxDecimalText = document.getElementById("sbox_decimal_text");

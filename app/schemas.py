@@ -1,14 +1,15 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any  # ← TAMBAHKAN Dict, Any
 from pydantic import BaseModel, Field
 
 
 class EncryptMode(str):
     STANDARD = "standard"
+    SBOX44 = "sbox44"  # ← TAMBAHKAN INI
     CUSTOM = "custom"
 
 
 class EncryptRequest(BaseModel):
-    mode: str = Field(..., description="standard atau custom")
+    mode: str = Field(..., description="standard, sbox44, atau custom")  # ← UPDATE DESCRIPTION
     key_hex: str = Field(..., description="kunci input (teks bebas atau 32 char hex)")
     plaintext: Optional[str] = Field(
         None,
@@ -52,14 +53,21 @@ class SBoxGenerateResponse(BaseModel):
     metrics: SBoxMetricsResponse
     affine_matrix: List[List[int]]
 
-# --- Tambahkan ini ---
+
 class SBoxUploadResponse(BaseModel):
     sbox: List[int]
     metrics: SBoxMetricsResponse
-# ---------------------
+
+
+class SBoxPaper44Response(BaseModel):  # ← TAMBAHKAN INI (HILANG DI KODE ANDA)
+    sbox: List[int]
+    metrics: SBoxMetricsResponse
+    affine_matrix: List[List[int]]
+    paper_info: Dict[str, Any]
+
 
 class DecryptRequest(BaseModel):
-    mode: str = Field(..., description="standard atau custom")
+    mode: str = Field(..., description="standard, sbox44, atau custom")  # ← UPDATE DESCRIPTION
     key_hex: str = Field(..., description="kunci input (teks bebas atau 32 char hex)")
     ciphertext_hex: str = Field(..., description="ciphertext dalam hex (hasil encrypt)")
     sbox: Optional[List[int]] = Field(

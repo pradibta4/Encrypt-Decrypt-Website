@@ -22,6 +22,26 @@ AES_STANDARD_SBOX: List[int] = [
     0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,
 ]
 
+# S-box 44 dari paper - hasil terbaik dengan metrik superior
+SBOX_44: List[int] = [
+    99, 205, 85, 71, 25, 127, 113, 219, 63, 244, 109, 159, 11, 228, 94, 214,
+    77, 177, 201, 78, 5, 48, 29, 30, 87, 96, 193, 80, 156, 200, 216, 86,
+    116, 143, 10, 14, 54, 169, 148, 68, 49, 75, 171, 157, 92, 114, 188, 194,
+    121, 220, 131, 210, 83, 135, 250, 149, 253, 72, 182, 33, 190, 141, 249, 82,
+    232, 50, 21, 84, 215, 242, 180, 198, 168, 167, 103, 122, 152, 162, 145, 184,
+    43, 237, 119, 183, 7, 12, 125, 55, 252, 206, 235, 160, 140, 133, 179, 192,
+    110, 176, 221, 134, 19, 6, 187, 59, 26, 129, 112, 73, 175, 45, 24, 218,
+    44, 66, 151, 32, 137, 31, 35, 147, 236, 247, 117, 132, 79, 136, 154, 105,
+    199, 101, 203, 52, 57, 4, 153, 197, 88, 76, 202, 174, 233, 62, 208, 91,
+    231, 53, 1, 124, 0, 28, 142, 170, 158, 51, 226, 65, 123, 186, 239, 246,
+    38, 56, 36, 108, 8, 126, 9, 189, 81, 234, 212, 224, 13, 3, 40, 64,
+    172, 74, 181, 118, 39, 227, 130, 89, 245, 166, 16, 61, 106, 196, 211, 107,
+    229, 195, 138, 18, 93, 207, 240, 95, 58, 255, 209, 217, 15, 111, 46, 173,
+    223, 42, 115, 238, 139, 243, 23, 98, 100, 178, 37, 97, 191, 213, 222, 155,
+    165, 2, 146, 204, 120, 241, 163, 128, 22, 90, 60, 185, 67, 34, 27, 248,
+    164, 69, 41, 230, 104, 47, 144, 251, 20, 17, 150, 225, 254, 161, 102, 70
+]
+
 AES_INVERSE_TABLE = [
     0x00, 0x01, 0x8d, 0xf6, 0xcb, 0x52, 0x7b, 0xd1, 0xe8, 0x4f, 0x29, 0xc0, 0xb0, 0xe1, 0xe5, 0xc7,
     0x74, 0xb4, 0xaa, 0x4b, 0x99, 0x2b, 0x60, 0x5f, 0x58, 0x3f, 0xfd, 0xcc, 0xff, 0x40, 0xee, 0xb2,
@@ -41,11 +61,21 @@ AES_INVERSE_TABLE = [
     0x5b, 0x23, 0x38, 0x34, 0x68, 0x46, 0x03, 0x8c, 0xdd, 0x9c, 0x7d, 0xa0, 0xcd, 0x1a, 0x41, 0x1c
 ]
 
+# Affine matrix K44 dari paper
+K44_AFFINE_MATRIX = [
+    [0, 1, 0, 1, 0, 1, 1, 1],
+    [1, 0, 1, 0, 1, 0, 1, 1],
+    [1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 1, 1, 0, 1, 0, 1, 0],
+    [0, 1, 1, 1, 0, 1, 0, 1],
+    [1, 0, 1, 1, 1, 0, 1, 0],
+    [0, 1, 0, 1, 1, 1, 0, 1],
+    [1, 0, 1, 0, 1, 1, 1, 0]
+]
 
-
-NB = 4  # blok AES = 4 kolom (16 byte)
-NK = 4  # key length (4 words = 16 byte)
-NR = 10 # 10 round untuk AES-128
+NB = 4
+NK = 4
+NR = 10
 
 
 def validate_sbox(sbox: List[int]) -> bool:
@@ -64,10 +94,6 @@ def validate_sbox(sbox: List[int]) -> bool:
 
 
 def derive_key_from_input(key_input: str) -> bytes:
-    """
-    Terima input key bebas (string). Jika berupa hex 16-byte gunakan langsung,
-    jika tidak/kurang panjang, gunakan SHA-256 dan ambil 16 byte pertama.
-    """
     key_str = key_input.strip()
     if not key_str:
         raise ValueError("Key tidak boleh kosong")
@@ -84,17 +110,11 @@ def derive_key_from_input(key_input: str) -> bytes:
 
 
 def bytes_to_state(block: bytes) -> List[List[int]]:
-    """
-    Ubah 16 byte -> matriks 4x4 (state) kolom-major.
-    """
     assert len(block) == 16
     return [[block[row + 4 * col] for col in range(4)] for row in range(4)]
 
 
 def state_to_bytes(state: List[List[int]]) -> bytes:
-    """
-    Ubah state 4x4 -> 16 byte.
-    """
     out = bytearray(16)
     for row in range(4):
         for col in range(4):
@@ -116,12 +136,11 @@ def shift_rows(state: List[List[int]]) -> List[List[int]]:
 def xtime(a: int) -> int:
     a <<= 1
     if a & 0x100:
-        a ^= 0x11B  # polinomial AES
+        a ^= 0x11B
     return a & 0xFF
 
 
 def mix_single_column(col: List[int]) -> List[int]:
-    # implementasi standard MixColumns
     t = col[0] ^ col[1] ^ col[2] ^ col[3]
     u0 = col[0]
     col[0] ^= t ^ xtime(col[0] ^ col[1])
@@ -142,7 +161,6 @@ def mix_columns(state: List[List[int]]) -> List[List[int]]:
 
 
 def add_round_key(state: List[List[int]], round_key: List[int]) -> List[List[int]]:
-    # round_key panjang 16 byte
     new_state = [[0] * 4 for _ in range(4)]
     for r in range(4):
         for c in range(4):
@@ -168,9 +186,8 @@ def sub_word(word: List[int], sbox: List[int]) -> List[int]:
 
 def key_expansion(key: bytes, sbox: List[int]) -> List[List[int]]:
     assert len(key) == 16
-    w: List[int] = list(key)  # mulai dari key asli (4 word pertama)
+    w: List[int] = list(key)
 
-    # kita butuh (NB * (NR + 1)) * 4 byte = 176 byte
     for i in range(NK, NB * (NR + 1)):
         temp = w[4*(i-1):4*i]
         if i % NK == 0:
@@ -181,7 +198,6 @@ def key_expansion(key: bytes, sbox: List[int]) -> List[List[int]]:
             temp[j] ^= w[4*(i-NK) + j]
         w.extend(temp)
 
-    # pecah jadi round keys, masing2 16 byte
     round_keys: List[List[int]] = []
     for r in range(NR + 1):
         rk = w[16*r:16*(r+1)]
@@ -202,7 +218,6 @@ def aes_encrypt_block(block: bytes, key: bytes, sbox: List[int]) -> bytes:
         state = mix_columns(state)
         state = add_round_key(state, round_keys[rnd])
 
-    # final round tanpa mix_columns
     state = sub_bytes(state, sbox)
     state = shift_rows(state)
     state = add_round_key(state, round_keys[NR])
@@ -243,10 +258,8 @@ def encrypt_text_to_hex(
     ct_bytes = aes_encrypt_ecb(pt_bytes, key, sbox)
     return ct_bytes.hex()
 
-# --- fungsi bantu GF(2^8) untuk dekripsi --- #
 
 def gmul(a: int, b: int) -> int:
-    """Perkalian di GF(2^8) dengan polinomial AES (0x11B)."""
     p = 0
     for _ in range(8):
         if b & 1:
@@ -261,7 +274,6 @@ def gmul(a: int, b: int) -> int:
 
 def inv_shift_rows(state: List[List[int]]) -> List[List[int]]:
     new_state = [row[:] for row in state]
-    # kebalikan shift: geser ke kanan
     for r in range(4):
         new_state[r] = state[r][-r:] + state[r][:-r]
     return new_state
@@ -272,7 +284,6 @@ def inv_sub_bytes(state: List[List[int]], inv_sbox: List[int]) -> List[List[int]
 
 
 def inv_mix_single_column(col: List[int]) -> List[int]:
-    # matrix [0e 0b 0d 09; 09 0e 0b 0d; 0d 09 0e 0b; 0b 0d 09 0e]
     s0, s1, s2, s3 = col
     r0 = gmul(s0, 0x0E) ^ gmul(s1, 0x0B) ^ gmul(s2, 0x0D) ^ gmul(s3, 0x09)
     r1 = gmul(s0, 0x09) ^ gmul(s1, 0x0E) ^ gmul(s2, 0x0B) ^ gmul(s3, 0x0D)
@@ -290,6 +301,7 @@ def inv_mix_columns(state: List[List[int]]) -> List[List[int]]:
             new_state[r][c] = col[r]
     return new_state
 
+
 def pkcs7_unpad(data: bytes, block_size: int = 16) -> bytes:
     if not data or len(data) % block_size != 0:
         raise ValueError("Data ciphertext tidak kelipatan blok, tidak valid.")
@@ -306,7 +318,6 @@ def aes_decrypt_block(block: bytes, key: bytes, sbox: List[int], inv_sbox: List[
     state = bytes_to_state(block)
     round_keys = key_expansion(key, sbox)
 
-    # mulai dari round key terakhir
     state = add_round_key(state, round_keys[NR])
 
     for rnd in range(NR - 1, 0, -1):
@@ -315,7 +326,6 @@ def aes_decrypt_block(block: bytes, key: bytes, sbox: List[int], inv_sbox: List[
         state = add_round_key(state, round_keys[rnd])
         state = inv_mix_columns(state)
 
-    # final round tanpa inv_mix_columns
     state = inv_shift_rows(state)
     state = inv_sub_bytes(state, inv_sbox)
     state = add_round_key(state, round_keys[0])
@@ -331,6 +341,7 @@ def aes_decrypt_ecb(ciphertext: bytes, key: bytes, sbox: List[int], inv_sbox: Li
         block = ciphertext[i:i+16]
         out.extend(aes_decrypt_block(block, key, sbox, inv_sbox))
     return pkcs7_unpad(bytes(out))
+
 
 def build_inv_sbox(sbox: List[int]) -> List[int]:
     inv = [0] * 256
@@ -360,4 +371,3 @@ def decrypt_hex_to_text(
     inv_sbox = build_inv_sbox(sbox)
     pt_bytes = aes_decrypt_ecb(ct_bytes, key, sbox, inv_sbox)
     return pt_bytes.decode("utf-8", errors="replace")
-

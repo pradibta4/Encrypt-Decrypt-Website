@@ -2,21 +2,145 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>AES Web - Custom & Standard S-Box</title>
+  <title>AES Web - S-Box 44 (Paper Research)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen">
-  <div class="max-w-5xl mx-auto py-10 px-4 space-y-8">
-    <header>
-      <h1 class="text-3xl font-bold mb-2">AES Encryption Lab</h1>
-      <p class="text-sm text-slate-300">
-        Enkripsi / dekripsi teks dan file dengan AES-128 (ECB + PKCS#7) menggunakan Standard atau Custom S-Box.
-        Backend: <code>http://127.0.0.1:8000</code>.
+  <div class="max-w-7xl mx-auto py-10 px-4 space-y-8">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-6 shadow-2xl">
+      <h1 class="text-4xl font-bold mb-2 text-white">AES Encryption Lab</h1>
+      <p class="text-sm text-emerald-50">
+        Implementasi paper: <strong>"AES S-box modification uses affine matrices exploration"</strong> (Alamsyah et al., 2024)
+        <br>S-box 44 dengan metrik superior: NL=112, SAC=0.50073, BIC-SAC=0.50237
       </p>
     </header>
 
+    <!-- Pipeline Metode dari Paper -->
+    <section class="bg-gradient-to-br from-indigo-900 to-purple-900 rounded-2xl p-6 shadow-2xl border border-indigo-700">
+      <h2 class="font-bold text-2xl mb-4 text-white flex items-center">
+        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+        </svg>
+        Pipeline Metode Modifikasi S-Box (dari Paper)
+      </h2>
+      
+      <div class="grid md:grid-cols-4 gap-4 mt-6">
+        <!-- Step 1 -->
+        <div class="bg-slate-800 rounded-xl p-4 border-2 border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/50 transition-all duration-300">
+          <div class="flex items-center mb-3">
+            <div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white font-bold text-lg mr-3">1</div>
+            <h3 class="font-bold text-emerald-400">Irreducible Polynomial</h3>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Menggunakan polinomial irreducible AES standar:
+            <code class="block mt-2 bg-slate-900 p-2 rounded text-emerald-300 font-mono text-[10px]">
+              x⁸ + x⁴ + x³ + x + 1
+            </code>
+          </p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="bg-slate-800 rounded-xl p-4 border-2 border-blue-500 hover:shadow-xl hover:shadow-blue-500/50 transition-all duration-300">
+          <div class="flex items-center mb-3">
+            <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg mr-3">2</div>
+            <h3 class="font-bold text-blue-400">Multiplicative Inverse</h3>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Membentuk tabel invers multiplikatif 256 elemen dalam GF(2⁸) menggunakan polinomial dari Step 1
+          </p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="bg-slate-800 rounded-xl p-4 border-2 border-purple-500 hover:shadow-xl hover:shadow-purple-500/50 transition-all duration-300">
+          <div class="flex items-center mb-3">
+            <div class="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg mr-3">3</div>
+            <h3 class="font-bold text-purple-400">Affine Matrix Exploration</h3>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Eksplorasi 2⁶⁴ (18+ quintillion) matriks affine 8×8. Dari eksplorasi ini, hanya 128 matriks yang memenuhi kriteria <strong>balance</strong> dan <strong>bijectivity</strong>.
+          </p>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="bg-slate-800 rounded-xl p-4 border-2 border-pink-500 hover:shadow-xl hover:shadow-pink-500/50 transition-all duration-300">
+          <div class="flex items-center mb-3">
+            <div class="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-white font-bold text-lg mr-3">4</div>
+            <h3 class="font-bold text-pink-400">Affine Transformation</h3>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Transformasi affine: 
+            <code class="block mt-2 bg-slate-900 p-2 rounded text-pink-300 font-mono text-[10px]">
+              B(X) = K₄₄ · X⁻¹ + C_AES (mod 2)
+            </code>
+            Menghasilkan <strong>S-box 44</strong> dengan metrik terbaik
+          </p>
+        </div>
+      </div>
+
+      <!-- Kriteria Testing -->
+      <div class="mt-6 bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <h3 class="font-semibold text-lg mb-3 text-indigo-300">Kriteria Testing S-Box (dari Paper)</h3>
+        <div class="grid md:grid-cols-3 gap-3 text-xs">
+          <div class="bg-slate-900 rounded-lg p-3">
+            <span class="font-bold text-emerald-400">Balance:</span>
+            <p class="text-slate-300 mt-1">Jumlah output bit 0 = jumlah output bit 1 (masing-masing 128)</p>
+          </div>
+          <div class="bg-slate-900 rounded-lg p-3">
+            <span class="font-bold text-blue-400">Bijectivity:</span>
+            <p class="text-slate-300 mt-1">Setiap output [0-255] unik, memastikan reversibilitas enkripsi</p>
+          </div>
+          <div class="bg-slate-900 rounded-lg p-3">
+            <span class="font-bold text-purple-400">Cryptographic Strength:</span>
+            <p class="text-slate-300 mt-1">NL, SAC, BIC-NL, BIC-SAC, LAP, DAP (diukur pada S-box final)</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hasil S-box 44 -->
+      <div class="mt-6 bg-gradient-to-r from-emerald-800 to-teal-800 rounded-xl p-4 border border-emerald-600">
+        <h3 class="font-semibold text-lg mb-2 text-white flex items-center">
+          <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+            <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+          </svg>
+          Hasil S-box 44 (Best Performance)
+        </h3>
+        <div class="grid md:grid-cols-6 gap-2 text-xs">
+          <div class="bg-slate-900 rounded p-2 text-center">
+            <div class="text-slate-400">NL</div>
+            <div class="font-bold text-emerald-300 text-lg">112</div>
+          </div>
+          <div class="bg-slate-900 rounded p-2 text-center">
+            <div class="text-slate-400">SAC</div>
+            <div class="font-bold text-emerald-300 text-lg">0.50073</div>
+          </div>
+          <div class="bg-slate-900 rounded p-2 text-center">
+            <div class="text-slate-400">BIC-NL</div>
+            <div class="font-bold text-emerald-300 text-lg">112</div>
+          </div>
+          <div class="bg-slate-900 rounded p-2 text-center">
+            <div class="text-slate-400">BIC-SAC</div>
+            <div class="font-bold text-emerald-300 text-lg">0.50237</div>
+          </div>
+          <div class="bg-slate-900 rounded p-2 text-center">
+            <div class="text-slate-400">LAP</div>
+            <div class="font-bold text-emerald-300 text-lg">0.0625</div>
+          </div>
+          <div class="bg-slate-900 rounded p-2 text-center">
+            <div class="text-slate-400">DAP</div>
+            <div class="font-bold text-emerald-300 text-lg">0.01563</div>
+          </div>
+        </div>
+        <p class="text-[10px] text-emerald-200 mt-3 italic">
+          ✨ Peningkatan dibanding AES standard: SAC +0.83%, BIC-SAC +0.44%, Overall +0.0027%
+        </p>
+      </div>
+    </section>
+
+    <!-- Encrypt Section -->
     <section class="bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-700">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-semibold text-lg">Encrypt Text</h2>
@@ -26,9 +150,10 @@
       <div class="grid md:grid-cols-2 gap-4">
         <div class="space-y-3">
           <div>
-            <label class="block text-sm font-medium mb-1">Mode</label>
+            <label class="block text-sm font-medium mb-1">Mode S-Box</label>
             <select id="mode" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm">
               <option value="standard">AES Standard S-Box</option>
+              <option value="sbox44" selected>S-box 44 (Paper - Best)</option>
               <option value="custom">Custom S-Box</option>
             </select>
           </div>
@@ -88,6 +213,7 @@
       </div>
     </section>
 
+    <!-- Decrypt Section -->
     <section class="bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-700">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-semibold text-lg">Decrypt Ciphertext</h2>
@@ -97,9 +223,10 @@
       <div class="grid md:grid-cols-2 gap-4">
         <div class="space-y-3">
           <div>
-            <label class="block text-sm font-medium mb-1">Mode</label>
+            <label class="block text-sm font-medium mb-1">Mode S-Box</label>
             <select id="dec_mode" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm">
               <option value="standard">AES Standard S-Box</option>
+              <option value="sbox44" selected>S-box 44 (Paper - Best)</option>
               <option value="custom">Custom S-Box</option>
             </select>
           </div>
@@ -159,35 +286,43 @@
       </div>
     </section>
 
+    <!-- Lab S-Box -->
     <section class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-700 mb-8">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-semibold text-lg">Lab S-Box</h2>
-        <span class="text-xs text-slate-400">/sbox/generate • /sbox/upload • /sbox/metrics</span>
+        <span class="text-xs text-slate-400">/sbox/generate • /sbox/upload • /sbox/paper44</span>
       </div>
 
       <div class="grid md:grid-cols-2 gap-4">
         <div class="space-y-3">
           <div class="flex flex-wrap gap-2 items-center">
             <button
+              id="load_sbox44_btn"
+              type="button"
+              class="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 hover:shadow-lg hover:shadow-emerald-500/50 text-xs font-semibold transition-all duration-300 text-white transform hover:scale-105"
+            >
+              Load S-box 44 (Paper)
+            </button>
+            <button
               id="generate_sbox_btn"
               type="button"
-              class="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 hover:shadow-lg hover:shadow-emerald-500/50 text-xs font-semibold transition-all duration-300 text-white transform hover:scale-105"
+              class="px-3 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 hover:shadow-lg hover:shadow-blue-500/50 text-xs font-semibold transition-all duration-300 text-white transform hover:scale-105"
             >
-              Generate New
+              Generate Random
             </button>
             <button
               id="download_json_btn"
               type="button"
               class="px-3 py-2 rounded-xl bg-slate-600 hover:bg-slate-500 text-xs font-semibold transition text-white"
             >
-              Download S-Box(JSON)
+              Download JSON
             </button>
             <button
               id="download_excel_btn"
               type="button"
               class="px-3 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-xs font-semibold transition text-white"
             >
-              Download S-Box(Excel)
+              Download Excel
             </button>
             <label class="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-xs font-semibold transition cursor-pointer text-white">
               Upload (JSON/Excel)
@@ -218,13 +353,13 @@
             </button>
           </div>
           <label class="block text-sm mb-1 mt-2 font-medium">
-            Affine Matrix (8x8, elemen 0/1 & bisa di-copy. Tiap baris dipisah enter)
+            Affine Matrix (8x8, elemen 0/1)
           </label>
           <textarea
             id="affine_matrix_text"
             rows="6"
             class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
-            placeholder="Klik Generate S-Box untuk melihat affine matrix..."
+            placeholder="Klik Load S-box 44 atau Generate untuk melihat affine matrix..."
             readonly
           ></textarea>
 
@@ -236,14 +371,13 @@
             <p class="text-sm font-medium mb-1">Tabel S-Box (hex)</p>
             <div id="sbox_table_container" class="border border-slate-700 rounded-xl bg-slate-900 p-2 max-h-64 overflow-auto">
               <div id="sbox_display" class="mt-4"></div>
-                </div>
             </div>
           </div>
           <div>
             <h3 class="text-sm font-semibold mb-2">Affine Matrix (8x8, 0/1)</h3>
             <div id="affine_matrix_display" class="text-[11px] font-mono text-slate-100"></div>
             <p class="text-[10px] text-slate-400 mt-1">
-              Ditampilkan untuk S-Box yang di-generate dari tombol "Generate S-Box".
+              Ditampilkan untuk S-Box yang di-load/generate.
             </p>
           </div>
           <div>
@@ -256,6 +390,12 @@
       </div>
     </section>
   </div>
+
+  <!-- Footer -->
+  <footer class="text-center py-6 text-slate-400 text-sm">
+    <p>📄 Based on: <strong>"AES S-box modification uses affine matrices exploration"</strong></p>
+    <p class="text-xs mt-1">Alamsyah et al. (2024) - Nonlinear Dynamics</p>
+  </footer>
 
   <script src="./main.js"></script>
 </body>

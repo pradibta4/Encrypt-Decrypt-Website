@@ -66,6 +66,12 @@ class SBoxPaper44Response(BaseModel):  # ← TAMBAHKAN INI (HILANG DI KODE ANDA)
     paper_info: Dict[str, Any]
 
 
+class SBoxStandardResponse(BaseModel):
+    sbox: List[int]
+    metrics: SBoxMetricsResponse
+    affine_matrix: Optional[List[List[int]]] = None
+
+
 class DecryptRequest(BaseModel):
     mode: str = Field(..., description="standard, sbox44, atau custom")  # ← UPDATE DESCRIPTION
     key_hex: str = Field(..., description="kunci input (teks bebas atau 32 char hex)")

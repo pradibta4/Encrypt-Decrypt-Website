@@ -131,6 +131,17 @@ def get_sbox_44():
     )
 
 
+@app.get("/sbox/standard", response_model=schemas.SBoxStandardResponse)
+def get_sbox_standard():
+    """Endpoint untuk mendapatkan S-box AES standard beserta metriknya"""
+    metrics = analyze_sbox(AES_STANDARD_SBOX)
+    return schemas.SBoxStandardResponse(
+        sbox=AES_STANDARD_SBOX,
+        metrics=schemas.SBoxMetricsResponse(**metrics),
+        affine_matrix=None  # AES standard tidak menggunakan affine matrix custom
+    )
+
+
 @app.post("/sbox/metrics", response_model=schemas.SBoxMetricsResponse)
 def sbox_metrics(req: schemas.SBoxMetricsRequest):
     if not validate_sbox(req.sbox):

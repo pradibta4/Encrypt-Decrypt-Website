@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-</head>
+  <link rel="stylesheet" href="styles.css"></head>
 <body class="bg-slate-900 text-slate-100 min-h-screen">
   <div class="max-w-7xl mx-auto py-10 px-4 space-y-8">
     <!-- Header -->
@@ -289,7 +289,123 @@
     <!-- Lab S-Box -->
     <section class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-700 mb-8">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="font-semibold text-lg">Lab S-Box</h2>
+        <h2 class="font-semibold text-lg">Lab S-Box Comparison</h2>
+        <span class="text-xs text-slate-400">/sbox/standard • /sbox/paper44</span>
+      </div>
+
+      <!-- Generate Comparison Button -->
+      <div class="text-center mb-8">
+        <div class="inline-block p-1 bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500 rounded-2xl shadow-2xl">
+          <button
+            id="generate_comparison_btn"
+            type="button"
+            class="px-8 py-4 bg-slate-900 text-white font-bold text-lg rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-blue-500/50 border-2 border-transparent hover:border-blue-400"
+          >
+            <div class="flex items-center space-x-3">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+              </svg>
+              <span>Generate Comparison</span>
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+            </div>
+          </button>
+        </div>
+        <p class="text-sm text-slate-400 mt-3 max-w-md mx-auto">
+          Klik tombol di atas untuk memuat dan membandingkan AES Standard S-Box dengan S-Box 44 secara real-time
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6 mt-6">
+        <!-- S-Box Standard -->
+        <div class="bg-slate-800 rounded-xl p-4 border border-blue-500">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-blue-400">AES Standard S-Box</h3>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs text-slate-400">Format:</span>
+              <div class="flex bg-slate-700 rounded-lg p-1">
+                <button id="standard_format_hex" class="px-3 py-1 text-xs rounded-md bg-blue-600 text-white transition-all">Hex</button>
+                <button id="standard_format_dec" class="px-3 py-1 text-xs rounded-md text-slate-300 hover:text-white transition-all">Dec</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <p class="text-sm font-medium mb-1">Tabel S-Box (<span id="standard_format_label">hex</span>)</p>
+              <div id="standard_sbox_table" class="border border-slate-700 rounded-lg bg-slate-900 p-2 max-h-80 overflow-auto">
+                <div id="standard_sbox_display" class="text-xs text-slate-500">Klik Generate Comparison untuk melihat tabel</div>
+              </div>
+            </div>
+
+            <div>
+              <p class="text-sm font-medium mb-1">Metrik</p>
+              <div id="standard_metrics" class="text-xs text-slate-200 space-y-1 bg-slate-900 border border-slate-700 rounded-lg p-3">
+                <p class="text-slate-500">Metrik akan muncul di sini</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- S-Box 44 -->
+        <div class="bg-slate-800 rounded-xl p-4 border border-emerald-500">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-emerald-400">S-Box 44 (Paper)</h3>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs text-slate-400">Format:</span>
+              <div class="flex bg-slate-700 rounded-lg p-1">
+                <button id="sbox44_format_hex" class="px-3 py-1 text-xs rounded-md bg-emerald-600 text-white transition-all">Hex</button>
+                <button id="sbox44_format_dec" class="px-3 py-1 text-xs rounded-md text-slate-300 hover:text-white transition-all">Dec</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <p class="text-sm font-medium mb-1">Tabel S-Box (<span id="sbox44_format_label">hex</span>)</p>
+              <div id="sbox44_table" class="border border-slate-700 rounded-lg bg-slate-900 p-2 max-h-80 overflow-auto">
+                <div id="sbox44_display" class="text-xs text-slate-500">Klik Generate Comparison untuk melihat tabel</div>
+              </div>
+            </div>
+
+            <div>
+              <p class="text-sm font-medium mb-1">Metrik</p>
+              <div id="sbox44_metrics" class="text-xs text-slate-200 space-y-1 bg-slate-900 border border-slate-700 rounded-lg p-3">
+                <p class="text-slate-500">Metrik akan muncul di sini</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comparison Section -->
+      <div class="mt-6 bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <h3 class="font-semibold text-lg mb-4 text-center text-slate-200">Perbandingan Metrik</h3>
+        <div id="comparison_table" class="overflow-x-auto">
+          <table class="w-full text-xs border-collapse bg-slate-900 rounded-lg">
+            <thead>
+              <tr class="bg-slate-800">
+                <th class="px-3 py-2 text-left border border-slate-700 text-slate-300">Metrik</th>
+                <th class="px-3 py-2 text-center border border-slate-700 text-blue-400">AES Standard</th>
+                <th class="px-3 py-2 text-center border border-slate-700 text-emerald-400">S-Box 44</th>
+                <th class="px-3 py-2 text-center border border-slate-700 text-slate-300">Perbedaan</th>
+              </tr>
+            </thead>
+            <tbody id="comparison_body">
+              <tr>
+                <td colspan="4" class="px-3 py-4 text-center text-slate-500">Klik Generate Comparison untuk melihat perbandingan</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Old Lab S-Box (Random Generate) -->
+    <section class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-700 mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-lg">Lab S-Box (Random Generate)</h2>
         <span class="text-xs text-slate-400">/sbox/generate • /sbox/upload • /sbox/paper44</span>
       </div>
 
@@ -297,7 +413,7 @@
         <div class="space-y-3">
           <div class="flex flex-wrap gap-2 items-center">
             <button
-              id="load_sbox44_btn"
+              id="load_sbox44_random_btn"
               type="button"
               class="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 hover:shadow-lg hover:shadow-emerald-500/50 text-xs font-semibold transition-all duration-300 text-white transform hover:scale-105"
             >

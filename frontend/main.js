@@ -1,6 +1,10 @@
 const API_BASE = "http://127.0.0.1:8000";
 let currentSBox = null;
 let currentAffineMatrix = null;
+let standardSBox = null;
+let sbox44 = null;
+let standardFormat = 'hex'; // 'hex' or 'dec'
+let sbox44Format = 'hex'; // 'hex' or 'dec'
 
 function parseSBox(text) {
   const raw = text
@@ -195,6 +199,104 @@ function renderSboxTable(sbox) {
   sboxDisplay.innerHTML = html;
 }
 
+function renderSboxTableLarge(sbox, elementId, format = 'hex') {
+  const display = document.getElementById(elementId);
+  if (!display) return;
+  display.innerHTML = "";
+  if (!Array.isArray(sbox) || sbox.length !== 256) {
+    display.innerHTML = '<p class="text-xs text-slate-500">S-Box belum tersedia</p>';
+    return;
+  }
+  let html = '<table class="w-full text-[10px] font-mono border-collapse bg-slate-900 animate-fade-in">';
+  for (let i = 0; i < 16; i++) {
+    html += '<tr>';
+    for (let j = 0; j < 16; j++) {
+      const v = sbox[i * 16 + j];
+      const displayValue = format === 'hex' ? v.toString(16).padStart(2, '0') : v.toString();
+      const isHighlighted = (i + j) % 2 === 0; // Checkerboard pattern
+      const cellClass = isHighlighted 
+        ? 'bg-slate-800 hover:bg-blue-900/50' 
+        : 'bg-slate-900 hover:bg-slate-700';
+      html += `<td class="px-2 py-1 text-center border border-slate-700 transition-all duration-200 hover:scale-110 hover:z-10 relative ${cellClass} ${elementId.includes('standard') ? 'hover:text-blue-300' : 'hover:text-emerald-300'}" style="animation-delay: ${(i * 16 + j) * 5}ms">${displayValue}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</table>';
+  display.innerHTML = html;
+}
+
+function renderMetricsComparison(metrics, elementId) {
+  const display = document.getElementById(elementId);
+  if (!display) return;
+  display.innerHTML = `
+    <div class="space-y-1">
+      <div class="flex justify-between"><span>NL:</span><span>${metrics.nl_min}</span></div>
+      <div class="flex justify-between"><span>SAC:</span><span>${metrics.sac_avg.toFixed(5)}</span></div>
+      <div class="flex justify-between"><span>BIC-NL:</span><span>${metrics.bic_nl_min}</span></div>
+      <div class="flex justify-between"><span>BIC-SAC:</span><span>${metrics.bic_sac_score.toFixed(5)}</span></div>
+      <div class="flex justify-between"><span>LAP:</span><span>${metrics.lap_max_bias.toFixed(5)}</span></div>
+      <div class="flex justify-between"><span>DAP:</span><span>${metrics.dap_max.toFixed(5)}</span></div>
+    </div>
+  `;
+}
+
+function updateComparison() {
+  const body = document.getElementById('comparison_body');
+  if (!standardSBox || !sbox44) {
+    body.innerHTML = '<tr><td colspan="4" class="px-3 py-4 text-center text-slate-500">Load kedua S-Box untuk melihat perbandingan</td></tr>';
+    return;
+  }
+
+  // Get metrics for both
+  Promise.all([
+    fetch(`${API_BASE}/sbox/metrics`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sbox: standardSBox })
+    }),
+    fetch(`${API_BASE}/sbox/metrics`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sbox: sbox44 })
+    })
+  ]).then(async ([res1, res2]) => {
+    const metrics1 = await res1.json();
+    const metrics2 = await res2.json();
+
+    const metrics = [
+      { name: 'NL', key: 'nl_min', unit: '' },
+      { name: 'SAC', key: 'sac_avg', unit: '', decimals: 5 },
+      { name: 'BIC-NL', key: 'bic_nl_min', unit: '' },
+      { name: 'BIC-SAC', key: 'bic_sac_score', unit: '', decimals: 5 },
+      { name: 'LAP', key: 'lap_max_bias', unit: '', decimals: 5 },
+      { name: 'DAP', key: 'dap_max', unit: '', decimals: 5 }
+    ];
+
+    let html = '';
+    metrics.forEach((metric, index) => {
+      const val1 = metrics1[metric.key];
+      const val2 = metrics2[metric.key];
+      const diff = val2 - val1;
+      const diffStr = diff > 0 ? `+${diff.toFixed(metric.decimals || 0)}` : diff.toFixed(metric.decimals || 0);
+      const diffClass = diff > 0 ? 'text-green-400 font-bold' : diff < 0 ? 'text-red-400 font-bold' : 'text-slate-400';
+      const rowClass = diff > 0 ? 'bg-emerald-900/20 border-emerald-600/30' : diff < 0 ? 'bg-red-900/20 border-red-600/30' : '';
+
+      html += `
+        <tr class="hover:bg-slate-800 transition-all duration-300 animate-fade-in border border-slate-700 ${rowClass}" style="animation-delay: ${index * 100}ms">
+          <td class="px-3 py-3 border-r border-slate-600 text-slate-300 font-medium">${metric.name}</td>
+          <td class="px-3 py-3 border-r border-slate-600 text-center text-blue-400 font-mono">${val1.toFixed(metric.decimals || 0)}${metric.unit}</td>
+          <td class="px-3 py-3 border-r border-slate-600 text-center text-emerald-400 font-mono">${val2.toFixed(metric.decimals || 0)}${metric.unit}</td>
+          <td class="px-3 py-3 text-center ${diffClass} font-mono text-lg">${diffStr}${metric.unit}</td>
+        </tr>
+      `;
+    });
+
+    body.innerHTML = html;
+  }).catch(err => {
+    console.error('Error updating comparison:', err);
+  });
+}
+
 function updateSboxDecimalText(sbox) {
   if (!sboxDecimalText) return;
   if (!Array.isArray(sbox) || sbox.length !== 256) {
@@ -268,6 +370,122 @@ async function handleLoadSbox44() {
   } catch (e) {
     showError(metricsErrorMsg, e.message);
     metricsResult.innerHTML = '<p class="text-slate-500 text-xs">Hasil metric akan muncul di sini.</p>';
+  }
+}
+
+async function handleLoadSbox44Comparison() {
+  try {
+    const res = await fetch(`${API_BASE}/sbox/paper44`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Gagal load S-box 44.");
+    }
+    const data = await res.json();
+    sbox44 = data.sbox;
+    renderSboxTableLarge(sbox44, 'sbox44_display', sbox44Format);
+    renderMetricsComparison(data.metrics, 'sbox44_metrics');
+    updateComparison();
+  } catch (e) {
+    console.error(e.message);
+    document.getElementById('sbox44_display').innerHTML = '<p class="text-xs text-red-400">Error loading S-Box 44</p>';
+  }
+}
+
+async function handleGenerateComparison() {
+  // Show loading state with animation
+  const btn = document.getElementById('generate_comparison_btn');
+  btn.disabled = true;
+  btn.innerHTML = `
+    <div class="flex items-center space-x-3">
+      <div class="animate-spin rounded-full h-6 w-6 border-2 border-blue-400 border-t-transparent"></div>
+      <span>Loading Comparison...</span>
+      <div class="animate-pulse">⚡</div>
+    </div>
+  `;
+  btn.classList.add('bg-slate-700', 'cursor-not-allowed');
+  btn.classList.remove('hover:scale-105', 'hover:shadow-blue-500/50', 'hover:border-blue-400');
+  
+  document.getElementById('standard_sbox_display').innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-2 border-blue-400 border-t-transparent"></div><span class="ml-3 text-blue-400">Loading Standard S-Box...</span></div>';
+  document.getElementById('sbox44_display').innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-2 border-emerald-400 border-t-transparent"></div><span class="ml-3 text-emerald-400">Loading S-Box 44...</span></div>';
+  document.getElementById('standard_metrics').innerHTML = '<div class="flex items-center justify-center py-4"><div class="animate-pulse text-blue-400">📊 Calculating metrics...</div></div>';
+  document.getElementById('sbox44_metrics').innerHTML = '<div class="flex items-center justify-center py-4"><div class="animate-pulse text-emerald-400">📈 Analyzing performance...</div></div>';
+  document.getElementById('comparison_body').innerHTML = '<tr><td colspan="4" class="px-3 py-8 text-center"><div class="flex items-center justify-center"><div class="animate-bounce">🔄</div><span class="ml-3 text-slate-400">Generating comparison table...</span></div></td></tr>';
+
+  try {
+    // Load both S-Boxes in parallel
+    const [standardRes, sbox44Res] = await Promise.all([
+      fetch(`${API_BASE}/sbox/standard`),
+      fetch(`${API_BASE}/sbox/paper44`)
+    ]);
+
+    if (!standardRes.ok) {
+      throw new Error("Failed to load standard S-Box");
+    }
+    if (!sbox44Res.ok) {
+      throw new Error("Failed to load S-Box 44");
+    }
+
+    const [standardData, sbox44Data] = await Promise.all([
+      standardRes.json(),
+      sbox44Res.json()
+    ]);
+
+    // Set the data
+    standardSBox = standardData.sbox;
+    sbox44 = sbox44Data.sbox;
+
+    // Render everything with smooth transitions
+    setTimeout(() => {
+      renderSboxTableLarge(standardSBox, 'standard_sbox_display', standardFormat);
+      renderSboxTableLarge(sbox44, 'sbox44_display', sbox44Format);
+      renderMetricsComparison(standardData.metrics, 'standard_metrics');
+      renderMetricsComparison(sbox44Data.metrics, 'sbox44_metrics');
+      updateComparison();
+    }, 500); // Small delay for smooth transition
+
+  } catch (e) {
+    console.error(e.message);
+    const errorMsg = '<div class="flex items-center justify-center py-8"><div class="text-red-400">❌ Error loading comparison</div></div>';
+    document.getElementById('standard_sbox_display').innerHTML = errorMsg;
+    document.getElementById('sbox44_display').innerHTML = errorMsg;
+    document.getElementById('standard_metrics').innerHTML = '<div class="text-red-400 text-center py-4">Failed to load metrics</div>';
+    document.getElementById('sbox44_metrics').innerHTML = '<div class="text-red-400 text-center py-4">Failed to load metrics</div>';
+    document.getElementById('comparison_body').innerHTML = '<tr><td colspan="4" class="px-3 py-8 text-center text-red-400"><div>❌ Error generating comparison table</div></td></tr>';
+  } finally {
+    // Reset button with success animation
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = `
+        <div class="flex items-center space-x-3">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>Comparison Generated!</span>
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+        </div>
+      `;
+      btn.classList.remove('bg-slate-700', 'cursor-not-allowed');
+      btn.classList.add('bg-green-600', 'hover:bg-green-700');
+      
+      // Reset to normal state after 2 seconds
+      setTimeout(() => {
+        btn.innerHTML = `
+          <div class="flex items-center space-x-3">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            <span>Generate Comparison</span>
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+          </div>
+        `;
+        btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+        btn.classList.add('hover:scale-105', 'hover:shadow-blue-500/50', 'hover:border-blue-400');
+      }, 2000);
+    }, 1000);
   }
 }
 
@@ -421,6 +639,42 @@ function handleDownloadExcel() {
   XLSX.writeFile(wb, "sbox_matrix.xlsx");
 }
 
+function updateFormatButtons(sboxType) {
+  const hexBtn = document.getElementById(`${sboxType}_format_hex`);
+  const decBtn = document.getElementById(`${sboxType}_format_dec`);
+  const label = document.getElementById(`${sboxType}_format_label`);
+  
+  if (sboxType === 'standard') {
+    if (standardFormat === 'hex') {
+      hexBtn.classList.add('bg-blue-600', 'text-white');
+      hexBtn.classList.remove('text-slate-300');
+      decBtn.classList.remove('bg-blue-600', 'text-white');
+      decBtn.classList.add('text-slate-300');
+      if (label) label.textContent = 'hex';
+    } else {
+      decBtn.classList.add('bg-blue-600', 'text-white');
+      decBtn.classList.remove('text-slate-300');
+      hexBtn.classList.remove('bg-blue-600', 'text-white');
+      hexBtn.classList.add('text-slate-300');
+      if (label) label.textContent = 'decimal';
+    }
+  } else if (sboxType === 'sbox44') {
+    if (sbox44Format === 'hex') {
+      hexBtn.classList.add('bg-emerald-600', 'text-white');
+      hexBtn.classList.remove('text-slate-300');
+      decBtn.classList.remove('bg-emerald-600', 'text-white');
+      decBtn.classList.add('text-slate-300');
+      if (label) label.textContent = 'hex';
+    } else {
+      decBtn.classList.add('bg-emerald-600', 'text-white');
+      decBtn.classList.remove('text-slate-300');
+      hexBtn.classList.remove('bg-emerald-600', 'text-white');
+      hexBtn.classList.add('text-slate-300');
+      if (label) label.textContent = 'decimal';
+    }
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   // Encrypt text
   modeSelect.addEventListener("change", () => toggleSBox(modeSelect, sboxWrapper));
@@ -434,17 +688,57 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // S-Box lab
   if (loadSbox44Btn) loadSbox44Btn.addEventListener("click", handleLoadSbox44);
+  if (generateComparisonBtn) generateComparisonBtn.addEventListener("click", handleGenerateComparison);
   if (generateSboxBtn) generateSboxBtn.addEventListener("click", handleGenerateSbox);
   if (copySboxBtn) copySboxBtn.addEventListener("click", handleCopySbox);
   if (downloadJsonBtn) downloadJsonBtn.addEventListener("click", handleDownloadJson);
   if (downloadExcelBtn) downloadExcelBtn.addEventListener("click", handleDownloadExcel);
   if (uploadSboxFile) uploadSboxFile.addEventListener("change", (e) => handleUploadSbox(e.target.files[0]));
 
+  // Format toggle buttons for comparison lab
+  const standardFormatHex = document.getElementById('standard_format_hex');
+  const standardFormatDec = document.getElementById('standard_format_dec');
+  const sbox44FormatHex = document.getElementById('sbox44_format_hex');
+  const sbox44FormatDec = document.getElementById('sbox44_format_dec');
+
+  if (standardFormatHex) {
+    standardFormatHex.addEventListener('click', () => {
+      standardFormat = 'hex';
+      updateFormatButtons('standard');
+      if (standardSBox) renderSboxTableLarge(standardSBox, 'standard_sbox_display', standardFormat);
+    });
+  }
+  if (standardFormatDec) {
+    standardFormatDec.addEventListener('click', () => {
+      standardFormat = 'dec';
+      updateFormatButtons('standard');
+      if (standardSBox) renderSboxTableLarge(standardSBox, 'standard_sbox_display', standardFormat);
+    });
+  }
+  if (sbox44FormatHex) {
+    sbox44FormatHex.addEventListener('click', () => {
+      sbox44Format = 'hex';
+      updateFormatButtons('sbox44');
+      if (sbox44) renderSboxTableLarge(sbox44, 'sbox44_display', sbox44Format);
+    });
+  }
+  if (sbox44FormatDec) {
+    sbox44FormatDec.addEventListener('click', () => {
+      sbox44Format = 'dec';
+      updateFormatButtons('sbox44');
+      if (sbox44) renderSboxTableLarge(sbox44, 'sbox44_display', sbox44Format);
+    });
+  }
+
   // init table state
   renderSboxTable(currentSBox);
   renderAffineMatrix(currentAffineMatrix);
   updateAffineText(currentAffineMatrix);
   updateSboxDecimalText(currentSBox);
+
+  // Initialize format buttons
+  updateFormatButtons('standard');
+  updateFormatButtons('sbox44');
 });
 
 // DOM refs
@@ -470,7 +764,8 @@ const decErrorMsg = document.getElementById("dec_error_msg");
 
 const metricsResult = document.getElementById("metrics_result");
 const metricsErrorMsg = document.getElementById("metrics_error_msg");
-const loadSbox44Btn = document.getElementById("load_sbox44_btn");
+const loadSbox44Btn = document.getElementById("load_sbox44_random_btn");
+const generateComparisonBtn = document.getElementById("generate_comparison_btn");
 const generateSboxBtn = document.getElementById("generate_sbox_btn");
 const copySboxBtn = document.getElementById("copy_sbox_btn");
 const downloadJsonBtn = document.getElementById("download_json_btn");

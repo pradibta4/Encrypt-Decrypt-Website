@@ -1,3 +1,4 @@
+
 const API_BASE = "http://127.0.0.1:8000";
 let currentSBox = null;
 let currentAffineMatrix = null;
@@ -5,6 +6,14 @@ let standardSBox = null;
 let sbox44 = null;
 let standardFormat = 'hex'; // 'hex' or 'dec'
 let sbox44Format = 'hex'; // 'hex' or 'dec'
+
+// Variables untuk image encryption
+let currentEncryptedImageBase64 = null;
+let currentImageMetrics = null;
+let histogramChart = null;
+let histogramChartOriginal = null;  // For original image histogram
+let histogramChartEncrypted = null;  // For encrypted image histogram
+
 
 function parseSBox(text) {
   const raw = text
@@ -775,3 +784,702 @@ const sboxDisplay = document.getElementById("sbox_display");
 const affineMatrixDisplay = document.getElementById("affine_matrix_display");
 const affineMatrixText = document.getElementById("affine_matrix_text");
 const sboxDecimalText = document.getElementById("sbox_decimal_text");
+
+function toggleImageSBox(selectEl, wrapperEl) {
+    if (selectEl.value === "custom") {
+        wrapperEl.classList.remove("hidden");
+    } else {
+        wrapperEl.classList.add("hidden");
+    }
+}
+
+async function handleImageEncrypt() {
+    const imgErrorMsg = document.getElementById('img_error_msg');
+    clearError(imgErrorMsg);
+    
+    const mode = document.getElementById('img_mode').value;
+    const keyHex = document.getElementById('img_key_hex').value.trim();
+    const fileInput = document.getElementById('img_upload');
+    const sboxInput = document.getElementById('img_sbox_input');
+    const encryptBtn = document.getElementById('img_encrypt_btn');
+    
+    if (!keyHex) {
+        showError(imgErrorMsg, "Key wajib diisi");
+        return;
+    }
+    
+    if (!fileInput.files || fileInput.files.length === 0) {
+        showError(imgErrorMsg, "Pilih gambar terlebih dahulu");
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        showError(imgErrorMsg, "Ukuran gambar maksimal 5MB");
+        return;
+    }
+    
+    // Show loading state
+    encryptBtn.disabled = true;
+    const originalBtnHTML = encryptBtn.innerHTML;
+    encryptBtn.innerHTML = `
+        <div class="flex items-center justify-center space-x-3">
+            <div class="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+            <span>Processing...</span>
+        </div>
+    `;
+    
+    let sboxJson = null;
+    if (mode === "custom") {
+        try {
+            const sbox = parseSBox(sboxInput.value);
+            sboxJson = JSON.stringify(sbox);
+        } catch (e) {
+            showError(imgErrorMsg, e.message);
+            encryptBtn.disabled = false;
+            encryptBtn.innerHTML = originalBtnHTML;
+            return;
+        }
+    }
+    
+    const formData = new FormData();
+    formData.append('mode', mode);
+    formData.append('key_hex', keyHex);
+    formData.append('file', file);
+    if (sboxJson) {
+        formData.append('sbox_json', sboxJson);
+    }
+    
+    try {
+        const res = await fetch(`${API_BASE}/image/encrypt`, {
+            method: 'POST',
+            body: formData,
+        });
+        
+        console.log('Response status:', res.status);
+        console.log('Response ok:', res.ok);
+        
+        if (!res.ok) {
+            const errText = await res.text();
+            console.error('Error response:', errText);
+            let err;
+            try {
+                err = JSON.parse(errText);
+            } catch (e) {
+                err = { detail: errText };
+            }
+            throw new Error(err.detail || `HTTP ${res.status}: ${errText}`);
+        }
+        
+        const data = await res.json();
+        console.log('Success response:', data);
+        currentEncryptedImageBase64 = data.encrypted_image_base64;
+        currentImageMetrics = data;
+        
+        // Show results
+        document.getElementById('img_results').classList.remove('hidden');
+        
+        // Display original image
+        const originalImg = document.getElementById('original_img');
+        originalImg.src = URL.createObjectURL(file);
+        
+        // Display encrypted image as base64
+        const encryptedImg = document.getElementById('encrypted_img');
+        if (encryptedImg) {
+            encryptedImg.src = `data:image/png;base64,${data.encrypted_image_base64}`;
+            document.getElementById('encrypted_img_placeholder').classList.add('hidden');
+        }
+        
+        // Display metrics - ORIGINAL AND ENCRYPTED SEPARATELY
+        // Original metrics
+        document.getElementById('img_entropy_original').textContent = data.original_entropy.toFixed(4);
+        
+        // Encrypted metrics  
+        document.getElementById('img_entropy_encrypted').textContent = data.encrypted_entropy.toFixed(4);
+        document.getElementById('img_npr').textContent = data.npr.toFixed(4);
+        document.getElementById('img_uaci').textContent = data.uaci.toFixed(4);
+        document.getElementById('img_npcr').textContent = data.npcr.toFixed(4);
+        
+        // Render histograms - TERPISAH (ORIGINAL DAN ENCRYPTED)
+        renderHistogramOriginal(data.original_histogram);
+        renderHistogramEncrypted(data.encrypted_histogram);
+        
+        // Show success message
+        showImageMessage('✅ Gambar berhasil dienkripsi!', 'success');
+        
+    } catch (err) {
+        console.error('Full error object:', err);
+        console.error('Error message:', err.message);
+        console.error('Error stack:', err.stack);
+        showError(imgErrorMsg, err.message);
+    } finally {
+        // Reset button
+        encryptBtn.disabled = false;
+        encryptBtn.innerHTML = originalBtnHTML;
+    }
+}
+
+async function handleImageDecrypt() {
+    const decImgErrorMsg = document.getElementById('dec_img_error_msg');
+    clearError(decImgErrorMsg);
+    
+    const mode = document.getElementById('dec_img_mode').value;
+    const keyHex = document.getElementById('dec_img_key_hex').value.trim();
+    const fileInput = document.getElementById('dec_img_upload');
+    
+    if (!keyHex) {
+        showError(decImgErrorMsg, "Key wajib diisi");
+        return;
+    }
+    
+    if (!fileInput.files || fileInput.files.length === 0) {
+        showError(decImgErrorMsg, "Upload gambar encrypted (PNG/JPG)");
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        showError(decImgErrorMsg, "Ukuran gambar maksimal 10MB");
+        return;
+    }
+    
+    let sboxJson = null;
+    if (mode === "custom") {
+        try {
+            const sboxInput = document.getElementById('dec_img_sbox_input');
+            const sbox = parseSBox(sboxInput.value);
+            sboxJson = JSON.stringify(sbox);
+        } catch (e) {
+            showError(decImgErrorMsg, e.message);
+            return;
+        }
+    }
+    
+    const formData = new FormData();
+    formData.append('mode', mode);
+    formData.append('key_hex', keyHex);
+    formData.append('file', file);
+    if (sboxJson) {
+        formData.append('sbox_json', sboxJson);
+    }
+    
+    try {
+        const res = await fetch(`${API_BASE}/image/decrypt`, {
+            method: 'POST',
+            body: formData,
+        });
+        
+        console.log('Decrypt response status:', res.status);
+        
+        if (!res.ok) {
+            const errText = await res.text();
+            console.error('Decrypt error:', errText);
+            let err;
+            try {
+                err = JSON.parse(errText);
+            } catch (e) {
+                err = { detail: errText };
+            }
+            throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        
+        const data = await res.json();
+        
+        // Show results
+        document.getElementById('dec_img_results').classList.remove('hidden');
+        
+        // Display encrypted image (input)
+        const decEncryptedImg = document.getElementById('dec_encrypted_img');
+        decEncryptedImg.src = URL.createObjectURL(file);
+        
+        // Display decrypted image
+        const decryptedImg = document.getElementById('decrypted_img');
+        decryptedImg.src = `data:image/png;base64,${data.decrypted_image_base64}`;
+        
+        // Show success message
+        showImageMessage('✅ Gambar berhasil didekripsi!', 'success', 'dec_img');
+        
+    } catch (err) {
+        showError(decImgErrorMsg, err.message);
+    }
+}
+
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            // Remove data:application/octet-stream;base64, prefix
+            const base64 = reader.result.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = reject;
+    });
+}
+
+function renderHistogram(data, channel) {
+    const ctx = document.getElementById('histogram_chart').getContext('2d');
+    
+    // Destroy existing chart
+    if (histogramChart) {
+        histogramChart.destroy();
+    }
+    
+    const colorMap = {
+        'red': 'rgba(255, 99, 132, 0.8)',
+        'green': 'rgba(75, 192, 192, 0.8)',
+        'blue': 'rgba(54, 162, 235, 0.8)'
+    };
+    
+    const labels = Array.from({length: 256}, (_, i) => i.toString());
+    
+    histogramChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: `Channel ${channel}`,
+                data: data,
+                backgroundColor: colorMap[channel],
+                borderColor: colorMap[channel],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    display: false,
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderHistogramComparison(originalData, encryptedData) {
+    const ctx = document.getElementById('histogram_chart').getContext('2d');
+    
+    // Destroy existing chart
+    if (histogramChart) {
+        histogramChart.destroy();
+    }
+    
+    const labels = Array.from({length: 256}, (_, i) => i.toString());
+    
+    // Extract RGB channels - originalData and encryptedData now have {R: [], G: [], B: []}
+    const origR = originalData.R || originalData.r || [];
+    const origG = originalData.G || originalData.g || [];
+    const origB = originalData.B || originalData.b || [];
+    
+    const encR = encryptedData.R || encryptedData.r || [];
+    const encG = encryptedData.G || encryptedData.g || [];
+    const encB = encryptedData.B || encryptedData.b || [];
+    
+    histogramChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Original R',
+                    data: origR,
+                    backgroundColor: 'rgba(255, 0, 0, 0.4)',
+                    borderColor: 'rgba(255, 0, 0, 0.8)',
+                    borderWidth: 0.5,
+                    hidden: false
+                },
+                {
+                    label: 'Original G',
+                    data: origG,
+                    backgroundColor: 'rgba(0, 255, 0, 0.4)',
+                    borderColor: 'rgba(0, 255, 0, 0.8)',
+                    borderWidth: 0.5,
+                    hidden: false
+                },
+                {
+                    label: 'Original B',
+                    data: origB,
+                    backgroundColor: 'rgba(0, 0, 255, 0.4)',
+                    borderColor: 'rgba(0, 0, 255, 0.8)',
+                    borderWidth: 0.5,
+                    hidden: false
+                },
+                {
+                    label: 'Encrypted R',
+                    data: encR,
+                    backgroundColor: 'rgba(255, 100, 100, 0.4)',
+                    borderColor: 'rgba(255, 100, 100, 0.8)',
+                    borderWidth: 0.5,
+                    hidden: true
+                },
+                {
+                    label: 'Encrypted G',
+                    data: encG,
+                    backgroundColor: 'rgba(100, 255, 100, 0.4)',
+                    borderColor: 'rgba(100, 255, 100, 0.8)',
+                    borderWidth: 0.5,
+                    hidden: true
+                },
+                {
+                    label: 'Encrypted B',
+                    data: encB,
+                    backgroundColor: 'rgba(100, 100, 255, 0.4)',
+                    borderColor: 'rgba(100, 100, 255, 0.8)',
+                    borderWidth: 0.5,
+                    hidden: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    display: false,
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        padding: 15
+                    },
+                    position: 'top'
+                },
+                title: {
+                    display: true,
+                    text: 'Histogram Comparison (Red Channel)',
+                    color: 'rgba(255, 255, 255, 0.9)'
+                }
+            }
+        }
+    });
+}
+
+function renderHistogramOriginal(data) {
+    // data = {R: [...], G: [...], B: [...]}
+    const ctx = document.getElementById('histogram_original');
+    if (!ctx) return;
+    
+    if (histogramChartOriginal) {
+        histogramChartOriginal.destroy();
+    }
+    
+    const labels = Array.from({length: 256}, (_, i) => i.toString());
+    const origR = data.R || data.r || [];
+    const origG = data.G || data.g || [];
+    const origB = data.B || data.b || [];
+    
+    histogramChartOriginal = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Red Channel',
+                    data: origR,
+                    backgroundColor: 'rgba(255, 0, 0, 0.5)',
+                    borderColor: 'rgba(255, 0, 0, 0.8)',
+                    borderWidth: 0.5,
+                },
+                {
+                    label: 'Green Channel',
+                    data: origG,
+                    backgroundColor: 'rgba(0, 255, 0, 0.5)',
+                    borderColor: 'rgba(0, 255, 0, 0.8)',
+                    borderWidth: 0.5,
+                },
+                {
+                    label: 'Blue Channel',
+                    data: origB,
+                    backgroundColor: 'rgba(0, 0, 255, 0.5)',
+                    borderColor: 'rgba(0, 0, 255, 0.8)',
+                    borderWidth: 0.5,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { display: false, grid: { display: false } },
+                y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: 'rgba(255, 255, 255, 0.7)' } }
+            },
+            plugins: { legend: { labels: { color: 'rgba(255, 255, 255, 0.7)' } } }
+        }
+    });
+}
+
+function renderHistogramEncrypted(data) {
+    // data = {R: [...], G: [...], B: [...]}
+    const ctx = document.getElementById('histogram_encrypted');
+    if (!ctx) return;
+    
+    if (histogramChartEncrypted) {
+        histogramChartEncrypted.destroy();
+    }
+    
+    const labels = Array.from({length: 256}, (_, i) => i.toString());
+    const encR = data.R || data.r || [];
+    const encG = data.G || data.g || [];
+    const encB = data.B || data.b || [];
+    
+    histogramChartEncrypted = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Red Channel',
+                    data: encR,
+                    backgroundColor: 'rgba(255, 100, 100, 0.5)',
+                    borderColor: 'rgba(255, 100, 100, 0.8)',
+                    borderWidth: 0.5,
+                },
+                {
+                    label: 'Green Channel',
+                    data: encG,
+                    backgroundColor: 'rgba(100, 255, 100, 0.5)',
+                    borderColor: 'rgba(100, 255, 100, 0.8)',
+                    borderWidth: 0.5,
+                },
+                {
+                    label: 'Blue Channel',
+                    data: encB,
+                    backgroundColor: 'rgba(100, 100, 255, 0.5)',
+                    borderColor: 'rgba(100, 100, 255, 0.8)',
+                    borderWidth: 0.5,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { display: false, grid: { display: false } },
+                y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: 'rgba(255, 255, 255, 0.7)' } }
+            },
+            plugins: { legend: { labels: { color: 'rgba(255, 255, 255, 0.7)' } } }
+        }
+    });
+}
+
+function downloadEncryptedImage() {
+    if (!currentEncryptedImageBase64) {
+        alert("Tidak ada data terenkripsi");
+        return;
+    }
+
+    const a = document.createElement('a');
+    a.href = `data:image/png;base64,${currentEncryptedImageBase64}`;
+    a.download = `encrypted_image_${Date.now()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+
+function downloadDecryptedImage() {
+    const img = document.getElementById('decrypted_img');
+    if (!img.src) {
+        alert("Tidak ada gambar terdekripsi");
+        return;
+    }
+    
+    const a = document.createElement('a');
+    a.href = img.src;
+    a.download = `decrypted_image_${Date.now()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+function base64ToBlob(base64, contentType = '') {
+    const byteCharacters = atob(base64);
+    const byteArrays = [];
+    
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+        const slice = byteCharacters.slice(offset, offset + 512);
+        
+        const byteNumbers = new Array(slice.length);
+        for (let i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+        }
+        
+        const byteArray = new Uint8Array(byteNumbers);
+        byteArrays.push(byteArray);
+    }
+    
+    return new Blob(byteArrays, {type: contentType});
+}
+
+function showImageMessage(message, type = 'info', prefix = 'img') {
+    const msgEl = document.getElementById(`${prefix}_error_msg`);
+    msgEl.textContent = message;
+    msgEl.classList.remove('hidden', 'text-red-400', 'text-green-400');
+    
+    if (type === 'success') {
+        msgEl.classList.add('text-green-400');
+    } else {
+        msgEl.classList.add('text-red-400');
+    }
+    
+    // Auto hide after 5 seconds
+    setTimeout(() => {
+        msgEl.textContent = '';
+        msgEl.classList.add('hidden');
+    }, 5000);
+}
+
+// Add event listeners for image section
+document.addEventListener("DOMContentLoaded", () => {
+    // Image encryption
+    const imgModeSelect = document.getElementById('img_mode');
+    const imgSboxWrapper = document.getElementById('img-sbox-wrapper');
+    const imgEncryptBtn = document.getElementById('img_encrypt_btn');
+    const imgUpload = document.getElementById('img_upload');
+    const imgPreview = document.getElementById('img_preview');
+    const imgPreviewImg = document.getElementById('img_preview_img');
+    
+    if (imgModeSelect) {
+        imgModeSelect.addEventListener('change', () => toggleImageSBox(imgModeSelect, imgSboxWrapper));
+        toggleImageSBox(imgModeSelect, imgSboxWrapper);
+    }
+    
+    if (imgEncryptBtn) {
+        imgEncryptBtn.addEventListener('click', handleImageEncrypt);
+    }
+    
+    if (imgUpload) {
+        imgUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imgPreviewImg.src = e.target.result;
+                    imgPreview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    
+    // Image decryption
+    const decImgModeSelect = document.getElementById('dec_img_mode');
+    const decImgSboxWrapper = document.getElementById('dec_img-sbox-wrapper');
+    const imgDecryptBtn = document.getElementById('img_decrypt_btn');
+    
+    if (decImgModeSelect) {
+        decImgModeSelect.addEventListener('change', () => toggleImageSBox(decImgModeSelect, decImgSboxWrapper));
+        toggleImageSBox(decImgModeSelect, decImgSboxWrapper);
+    }
+    
+    if (imgDecryptBtn) {
+        imgDecryptBtn.addEventListener('click', handleImageDecrypt);
+    }
+    
+    // Histogram buttons
+    const histRedBtn = document.getElementById('hist_red_btn');
+    const histGreenBtn = document.getElementById('hist_green_btn');
+    const histBlueBtn = document.getElementById('hist_blue_btn');
+    
+    if (histRedBtn) {
+        histRedBtn.addEventListener('click', () => {
+            if (currentImageMetrics) {
+                renderHistogram(currentImageMetrics.histogram_data.red, 'red');
+            }
+        });
+    }
+    
+    if (histGreenBtn) {
+        histGreenBtn.addEventListener('click', () => {
+            if (currentImageMetrics) {
+                renderHistogram(currentImageMetrics.histogram_data.green, 'green');
+            }
+        });
+    }
+    
+    if (histBlueBtn) {
+        histBlueBtn.addEventListener('click', () => {
+            if (currentImageMetrics) {
+                renderHistogram(currentImageMetrics.histogram_data.blue, 'blue');
+            }
+        });
+    }
+    
+    // Download buttons
+    const downloadEncryptedBtn = document.getElementById('download_encrypted_btn');
+    const downloadDecryptedBtn = document.getElementById('download_decrypted_btn');
+    const clearDecBtn = document.getElementById('clear_dec_btn');
+    
+    if (downloadEncryptedBtn) {
+        downloadEncryptedBtn.addEventListener('click', downloadEncryptedImage);
+    }
+    
+    if (downloadDecryptedBtn) {
+        downloadDecryptedBtn.addEventListener('click', downloadDecryptedImage);
+    }
+    
+    if (clearDecBtn) {
+        clearDecBtn.addEventListener('click', () => {
+            document.getElementById('dec_img_results').classList.add('hidden');
+            document.getElementById('dec_img_upload').value = '';
+            document.getElementById('dec_img_base64').value = '';
+        });
+    }
+    
+    // Copy metrics button
+    const copyMetricsBtn = document.getElementById('copy_metrics_btn');
+    if (copyMetricsBtn) {
+        copyMetricsBtn.addEventListener('click', () => {
+            if (!currentImageMetrics) {
+                alert("Tidak ada metrics untuk disalin");
+                return;
+            }
+            
+            const metricsText = `Image Encryption Metrics:
+Entropy: ${currentImageMetrics.entropy}
+NPR: ${currentImageMetrics.npr}%
+UACI: ${currentImageMetrics.uaci}%
+NPCR: ${currentImageMetrics.npcr}%
+Mode: ${currentImageMetrics.used_mode}
+Image Size: ${currentImageMetrics.image_size.width}x${currentImageMetrics.image_size.height}`;
+            
+            navigator.clipboard.writeText(metricsText).then(() => {
+                showImageMessage('✅ Metrics copied to clipboard!', 'success');
+            });
+        });
+    }
+});

@@ -86,3 +86,31 @@ class DecryptResponse(BaseModel):
     plaintext: str
     plaintext_hex: str
     used_mode: str
+
+
+class ImageEncryptRequest(BaseModel):
+    mode: str = Field(..., description="standard, sbox44, atau custom")
+    key_hex: str = Field(..., description="kunci input")
+    sbox: Optional[List[int]] = Field(None, description="custom S-Box")
+
+class ImageEncryptResponse(BaseModel):
+    encrypted_image_base64: str
+    original_entropy: float
+    encrypted_entropy: float
+    npr: float
+    uaci: float
+    npcr: float
+    original_histogram: Dict[str, List[int]]
+    encrypted_histogram: Dict[str, List[int]]
+    used_mode: str
+    image_size: Dict[str, int]
+
+class ImageDecryptRequest(BaseModel):
+    mode: str = Field(..., description="standard, sbox44, atau custom")
+    key_hex: str = Field(..., description="kunci input")
+    encrypted_image_base64: str = Field(..., description="gambar terenkripsi dalam base64")
+    sbox: Optional[List[int]] = Field(None, description="custom S-Box")
+
+class ImageDecryptResponse(BaseModel):
+    decrypted_image_base64: str
+    used_mode: str

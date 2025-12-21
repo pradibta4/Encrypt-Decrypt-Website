@@ -6,7 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="styles.css"></head>
+  
 <body class="bg-slate-900 text-slate-100 min-h-screen">
   <div class="max-w-7xl mx-auto py-10 px-4 space-y-8">
     <!-- Header -->
@@ -504,6 +506,272 @@
           </div>
         </div>
       </div>
+    </section>
+    <!-- Tambahkan setelah section Decrypt Text -->
+    <section class="bg-gradient-to-br from-purple-900 to-indigo-900 rounded-2xl p-6 shadow-2xl border border-purple-700">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="font-semibold text-lg text-white">Image Encryption Lab</h2>
+            <span class="text-xs text-purple-300">/image/encrypt • /image/decrypt</span>
+        </div>
+        
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Encrypt Image -->
+            <div class="bg-slate-800 rounded-xl p-4 border border-purple-600">
+                <h3 class="font-semibold text-lg mb-3 text-purple-300">Encrypt Image</h3>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Mode S-Box</label>
+                        <select id="img_mode" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm">
+                            <option value="standard">AES Standard S-Box</option>
+                            <option value="sbox44" selected>S-box 44 (Paper)</option>
+                            <option value="custom">Custom S-Box</option>
+                        </select>
+                    </div>
+                    
+                    <div id="img-sbox-wrapper" class="hidden">
+                        <label class="block text-sm font-medium mb-1">Custom S-Box (JSON)</label>
+                        <textarea
+                            id="img_sbox_input"
+                            rows="3"
+                            class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
+                            placeholder='[99, 124, 119, 123, ...]'
+                        ></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Key</label>
+                        <input
+                            id="img_key_hex"
+                            type="text"
+                            class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm"
+                            placeholder="Masukkan kunci"
+                        />
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Upload Image</label>
+                        <div class="border-2 border-dashed border-slate-600 rounded-xl p-4 text-center hover:border-purple-500 transition">
+                            <input type="file" id="img_upload" accept="image/*" class="hidden" />
+                            <label for="img_upload" class="cursor-pointer block">
+                                <div class="text-slate-400 mb-2">
+                                    <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                                <span class="text-sm text-slate-300">Klik untuk upload gambar</span>
+                                <p class="text-xs text-slate-500 mt-1">PNG, JPG, JPEG (max 5MB)</p>
+                            </label>
+                        </div>
+                        <div id="img_preview" class="mt-3 hidden">
+                            <p class="text-xs text-slate-400 mb-2">Preview:</p>
+                            <img id="img_preview_img" class="max-w-full max-h-48 rounded-lg mx-auto" />
+                        </div>
+                    </div>
+                    
+                    <button
+                        id="img_encrypt_btn"
+                        type="button"
+                        class="w-full px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-sm font-semibold transition"
+                    >
+                        Encrypt Image
+                    </button>
+                    
+                    <p id="img_error_msg" class="text-red-400 text-xs mt-1 hidden"></p>
+                </div>
+                
+                <!-- Results -->
+                <div id="img_results" class="mt-4 hidden">
+                    <div class="border-t border-slate-700 pt-4">
+                        <h4 class="font-medium mb-2 text-purple-300">Encryption Results</h4>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div id="original_img_display" class="bg-slate-900 rounded-lg p-2 border border-slate-700">
+                                <p class="text-xs text-slate-400 mb-2 font-semibold">Original Image</p>
+                                <img id="original_img" class="w-full h-auto rounded max-h-64 object-cover" />
+                            </div>
+                            <div id="encrypted_img_display" class="bg-slate-900 rounded-lg p-2 border border-slate-700">
+                                <p class="text-xs text-slate-400 mb-2 font-semibold">Encrypted (Full Noise)</p>
+                                <img id="encrypted_img" class="w-full h-auto rounded max-h-64 object-cover" />
+                                <div id="encrypted_img_placeholder" class="text-xs text-slate-500 text-center py-16 flex items-center justify-center">
+                                    <div class="text-center">
+                                        <svg class="w-12 h-12 mx-auto mb-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                        (Processing...)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Metrics - Original & Encrypted Separately -->
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <!-- Original Image Metrics -->
+                            <div class="bg-slate-900 rounded-lg p-3">
+                                <h5 class="font-medium text-sm mb-2 text-blue-300">Original Image</h5>
+                                <div class="space-y-2 text-xs">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Entropy:</span>
+                                        <span id="img_entropy_original" class="font-bold text-blue-400">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Encrypted Image Metrics -->
+                            <div class="bg-slate-900 rounded-lg p-3">
+                                <h5 class="font-medium text-sm mb-2 text-red-300">Encrypted Image</h5>
+                                <div class="space-y-2 text-xs">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Entropy:</span>
+                                        <span id="img_entropy_encrypted" class="font-bold text-red-400">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Comparison Metrics -->
+                        <div class="bg-slate-900 rounded-lg p-3 mb-3">
+                            <h5 class="font-medium text-sm mb-2 text-slate-300">Cryptographic Metrics</h5>
+                            <div class="grid grid-cols-3 gap-2 text-xs">
+                                <div class="text-center bg-slate-800 rounded p-2">
+                                    <div class="text-slate-400 mb-1">NPCR (%)</div>
+                                    <div id="img_npcr" class="font-bold text-purple-300">-</div>
+                                </div>
+                                <div class="text-center bg-slate-800 rounded p-2">
+                                    <div class="text-slate-400 mb-1">UACI (%)</div>
+                                    <div id="img_uaci" class="font-bold text-purple-300">-</div>
+                                </div>
+                                <div class="text-center bg-slate-800 rounded p-2">
+                                    <div class="text-slate-400 mb-1">NPR (%)</div>
+                                    <div id="img_npr" class="font-bold text-purple-300">-</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Histogram - Original -->
+                        <div class="bg-slate-900 rounded-lg p-3 mb-3">
+                            <h5 class="font-medium text-sm mb-2 text-blue-300">Histogram - Original Image (R, G, B Channels)</h5>
+                            <div class="h-48 bg-slate-800 rounded p-2">
+                                <canvas id="histogram_original"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Histogram - Encrypted -->
+                        <div class="bg-slate-900 rounded-lg p-3 mb-3">
+                            <h5 class="font-medium text-sm mb-2 text-red-300">Histogram - Encrypted Image (R, G, B Channels)</h5>
+                            <div class="h-48 bg-slate-800 rounded p-2">
+                                <canvas id="histogram_encrypted"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Download buttons -->
+                        <div class="flex gap-2">
+                            <button
+                              id="download_encrypted_btn"
+                              type="button"
+                              class="flex-1 px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-xs font-semibold transition"
+                            >
+                              Download Encrypted (PNG)
+                            </button>
+                            <button
+                                id="copy_metrics_btn"
+                                type="button"
+                                class="flex-1 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold transition"
+                            >
+                                Copy Metrics
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Decrypt Image -->
+            <div class="bg-slate-800 rounded-xl p-4 border border-indigo-600">
+                <h3 class="font-semibold text-lg mb-3 text-indigo-300">Decrypt Image</h3>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Mode S-Box</label>
+                        <select id="dec_img_mode" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm">
+                            <option value="standard">AES Standard S-Box</option>
+                            <option value="sbox44" selected>S-box 44 (Paper)</option>
+                            <option value="custom">Custom S-Box</option>
+                        </select>
+                    </div>
+                    
+                    <div id="dec_img-sbox-wrapper" class="hidden">
+                        <label class="block text-sm font-medium mb-1">Custom S-Box (JSON)</label>
+                        <textarea
+                            id="dec_img_sbox_input"
+                            rows="3"
+                            class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono"
+                            placeholder='[99, 124, 119, 123, ...]'
+                        ></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Key</label>
+                        <input
+                            id="dec_img_key_hex"
+                            type="text"
+                            class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm"
+                            placeholder="Masukkan kunci yang sama"
+                        />
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Encrypted Image File</label>
+                        <div class="relative">
+                            <input
+                                type="file"
+                                id="dec_img_upload"
+                                accept="image/png,image/jpeg,.png,.jpg,.jpeg"
+                                class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm file:bg-slate-700 file:text-white file:px-3 file:py-1 file:rounded file:border-0 file:cursor-pointer hover:file:bg-slate-600"
+                            />
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">Upload file PNG terenkripsi (hasil dari proses Encrypt) untuk dekripsi sempurna.</p>
+                    </div>
+                    
+                    <button
+                        id="img_decrypt_btn"
+                        type="button"
+                        class="w-full px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-sm font-semibold transition"
+                    >
+                        Decrypt Image
+                    </button>
+                    
+                    <p id="dec_img_error_msg" class="text-red-400 text-xs mt-1 hidden"></p>
+                </div>
+                
+                <!-- Decryption Results -->
+                <div id="dec_img_results" class="mt-4 hidden">
+                    <div class="border-t border-slate-700 pt-4">
+                        <h4 class="font-medium mb-2 text-indigo-300">Decryption Results</h4>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div id="encrypted_img_display" class="bg-slate-900 rounded-lg p-2 border border-slate-700">
+                                <p class="text-xs text-slate-400 mb-2 font-semibold">Encrypted Image (Input)</p>
+                                <img id="dec_encrypted_img" class="w-full h-auto rounded max-h-64 object-cover" />
+                            </div>
+                            <div id="decrypted_img_display" class="bg-slate-900 rounded-lg p-2 border border-slate-700">
+                                <p class="text-xs text-slate-400 mb-2 font-semibold">Decrypted Image (Output)</p>
+                                <img id="decrypted_img" class="w-full h-auto rounded max-h-64 object-cover" />
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button
+                                id="download_decrypted_btn"
+                                type="button"
+                                class="flex-1 px-3 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-xs font-semibold transition"
+                            >
+                                Download Decrypted
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </section>
   </div>
 

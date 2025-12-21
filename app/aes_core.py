@@ -232,12 +232,20 @@ def pkcs7_pad(data: bytes, block_size: int = 16) -> bytes:
     return data + bytes([pad_len] * pad_len)
 
 
-def aes_encrypt_ecb(plaintext: bytes, key: bytes, sbox: List[int]) -> bytes:
-    plaintext = pkcs7_pad(plaintext, 16)
+def aes_encrypt_ecb(plaintext: bytes, key: bytes, sbox: List[int], use_padding: bool = True) -> bytes:
+    """
+    AES ECB encryption.
+    use_padding=True untuk text encryption (default)
+    use_padding=False untuk image encryption (no padding)
+    """
+    if use_padding:
+        plaintext = pkcs7_pad(plaintext, 16)
+    
     out = bytearray()
     for i in range(0, len(plaintext), 16):
         block = plaintext[i:i+16]
-        out.extend(aes_encrypt_block(block, key, sbox))
+        if len(block) == 16:  # Only encrypt complete blocks
+            out.extend(aes_encrypt_block(block, key, sbox))
     return bytes(out)
 
 
@@ -333,14 +341,24 @@ def aes_decrypt_block(block: bytes, key: bytes, sbox: List[int], inv_sbox: List[
     return state_to_bytes(state)
 
 
-def aes_decrypt_ecb(ciphertext: bytes, key: bytes, sbox: List[int], inv_sbox: List[int]) -> bytes:
+def aes_decrypt_ecb(ciphertext: bytes, key: bytes, sbox: List[int], inv_sbox: List[int], use_padding: bool = True) -> bytes:
+    """
+    AES ECB decryption.
+    use_padding=True untuk text decryption (default)
+    use_padding=False untuk image decryption (no padding)
+    """
     if len(ciphertext) % 16 != 0:
         raise ValueError("Ciphertext harus kelipatan 16 byte (blok AES).")
+    
     out = bytearray()
     for i in range(0, len(ciphertext), 16):
         block = ciphertext[i:i+16]
         out.extend(aes_decrypt_block(block, key, sbox, inv_sbox))
-    return pkcs7_unpad(bytes(out))
+    
+    if use_padding:
+        return pkcs7_unpad(bytes(out))
+    else:
+        return bytes(out)
 
 
 def build_inv_sbox(sbox: List[int]) -> List[int]:

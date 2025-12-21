@@ -951,6 +951,9 @@ async function handleImageEncrypt() {
 async function handleImageDecrypt() {
     const decImgErrorMsg = document.getElementById('dec_img_error_msg');
     clearError(decImgErrorMsg);
+  const decryptBtn = document.getElementById('img_decrypt_btn');
+  const decResults = document.getElementById('dec_img_results');
+  if (decResults) decResults.classList.add('hidden');
     
     const mode = document.getElementById('dec_img_mode').value;
     const keyHex = document.getElementById('dec_img_key_hex').value.trim();
@@ -992,6 +995,16 @@ async function handleImageDecrypt() {
         formData.append('sbox_json', sboxJson);
     }
     
+    const originalBtnHTML = decryptBtn ? decryptBtn.innerHTML : '';
+    if (decryptBtn) {
+      decryptBtn.disabled = true;
+      decryptBtn.innerHTML = `
+      <div class="flex items-center justify-center space-x-3">
+        <div class="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+        <span>Processing...</span>
+      </div>`;
+    }
+
     try {
         const res = await fetch(`${API_BASE}/image/decrypt`, {
             method: 'POST',
@@ -1015,7 +1028,7 @@ async function handleImageDecrypt() {
         const data = await res.json();
         
         // Show results
-        document.getElementById('dec_img_results').classList.remove('hidden');
+        if (decResults) decResults.classList.remove('hidden');
         
         // Display encrypted image (input)
         const decEncryptedImg = document.getElementById('dec_encrypted_img');
@@ -1027,6 +1040,11 @@ async function handleImageDecrypt() {
         
     } catch (err) {
         showError(decImgErrorMsg, err.message);
+      } finally {
+        if (decryptBtn) {
+          decryptBtn.disabled = false;
+          decryptBtn.innerHTML = originalBtnHTML;
+        }
     }
 }
 
@@ -1107,6 +1125,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const decImgModeSelect = document.getElementById('dec_img_mode');
     const decImgSboxWrapper = document.getElementById('dec_img-sbox-wrapper');
     const imgDecryptBtn = document.getElementById('img_decrypt_btn');
+    const decImgUpload = document.getElementById('dec_img_upload');
+    const decImgPreview = document.getElementById('dec_img_preview');
+    const decImgPreviewImg = document.getElementById('dec_img_preview_img');
     
     if (decImgModeSelect) {
         decImgModeSelect.addEventListener('change', () => toggleImageSBox(decImgModeSelect, decImgSboxWrapper));
@@ -1115,6 +1136,20 @@ document.addEventListener("DOMContentLoaded", () => {
     
     if (imgDecryptBtn) {
         imgDecryptBtn.addEventListener('click', handleImageDecrypt);
+    }
+
+    if (decImgUpload) {
+      decImgUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            if (decImgPreviewImg) decImgPreviewImg.src = event.target.result;
+            if (decImgPreview) decImgPreview.classList.remove('hidden');
+          };
+          reader.readAsDataURL(file);
+        }
+      });
     }
 
     // Download buttons

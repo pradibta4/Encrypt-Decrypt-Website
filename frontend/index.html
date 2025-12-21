@@ -436,6 +436,12 @@
 
             <section class="glass-panel rounded-3xl p-8 relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+                <div id="dec_img_loader" class="hidden absolute inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-20">
+                    <div class="flex items-center gap-3 text-indigo-100 text-sm font-semibold">
+                        <span class="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></span>
+                        <span>Mendekripsi gambar...</span>
+                    </div>
+                </div>
                 <div class="flex items-center justify-between mb-6">
                     <h2 class="text-lg font-bold text-white flex items-center gap-2"><span class="w-1.5 h-6 bg-indigo-500 rounded-full"></span> Decrypt Image</h2>
                     <span class="text-[10px] font-mono text-indigo-400 bg-indigo-900/30 px-2 py-1 rounded border border-indigo-500/30">/img-dec</span>
@@ -462,9 +468,18 @@
                         <textarea id="dec_img_sbox_input" rows="2" class="w-full glass-input text-[10px] font-mono rounded-xl px-3 py-2 border-amber-500/30" placeholder="[99, 124, ...]"></textarea>
                     </div>
 
-                    <div class="relative">
-                        <input type="file" id="dec_img_upload" accept="image/png,image/jpeg,.png,.jpg,.jpeg" class="w-full glass-input text-xs rounded-xl px-3 py-2 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-500/20 file:text-indigo-400 hover:file:bg-indigo-500/30"/>
-                        <p class="text-[10px] text-slate-500 mt-1 ml-1">Upload Encrypted Image (PNG Recommended)</p>
+                    <div class="relative group upload-area border-2 border-dashed border-slate-600 rounded-xl p-6 text-center transition-colors">
+                        <input type="file" id="dec_img_upload" accept="image/png,image/jpeg,.png,.jpg,.jpeg" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                        <div class="space-y-2 pointer-events-none">
+                            <div class="w-10 h-10 mx-auto bg-slate-700/50 rounded-full flex items-center justify-center text-indigo-400 group-hover:text-indigo-300 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </div>
+                            <p class="text-sm text-slate-300">Klik atau seret encrypted image</p>
+                            <p class="text-[10px] text-slate-500">PNG/JPG • Disarankan PNG hasil enkripsi</p>
+                        </div>
+                    </div>
+                    <div id="dec_img_preview" class="hidden text-center bg-black/20 p-2 rounded-lg border border-white/5">
+                        <img id="dec_img_preview_img" class="max-h-32 mx-auto rounded shadow-sm" />
                     </div>
 
                     <button id="img_decrypt_btn" type="button" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold text-sm shadow-lg shadow-indigo-900/40 hover:scale-[1.02] transition-transform">DECRYPT IMAGE</button>

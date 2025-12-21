@@ -85,6 +85,12 @@
       border-color: #a78bfa; 
       background: rgba(139, 92, 246, 0.1);
     }
+
+    /* Team Card Hover Effect */
+    .team-card:hover .profile-img {
+      transform: scale(1.05);
+      border-color: #34d399;
+    }
   </style>
   
   <link rel="stylesheet" href="styles.css">
@@ -130,9 +136,14 @@
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
             S-Box Lab
         </button>
+        <button onclick="switchTab('credits')" id="btn-credits" class="glass-panel px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 tab-inactive flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+            Credits
+        </button>
     </nav>
 
     <div id="tab-dashboard" class="space-y-8 animate-fade-in">
+        
         <section class="glass-panel rounded-3xl p-8 border border-white/10 relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-pink-500"></div>
             <div class="flex items-center gap-3 mb-8">
@@ -183,6 +194,64 @@
                 </div>
             </div>
         </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-7 flex flex-col">
+            <section class="glass-panel rounded-3xl p-1 h-full relative overflow-hidden group">
+                <div class="absolute -top-24 -right-24 w-64 h-64 bg-emerald-500/20 rounded-full blur-[80px] group-hover:bg-emerald-500/30 transition-all duration-1000"></div>
+                <div class="bg-slate-900/60 h-full rounded-[20px] p-8 border border-white/5 flex flex-col justify-between">
+                <div class="flex justify-between items-start mb-8">
+                    <div>
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-widest mb-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Best Performance
+                    </div>
+                    <h3 class="text-2xl font-bold text-white">Hasil Metrik S-Box 44</h3>
+                    <p class="text-slate-400 text-sm mt-1">Paper: Alamsyah et al. (2024)</p>
+                    </div>
+                    <div class="p-3 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-xl border border-emerald-500/20">
+                    <svg class="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-black/20 p-4 rounded-2xl border border-white/5">
+                    <span class="text-xs text-slate-500 font-mono uppercase">Nonlinearity (NL)</span>
+                    <div class="text-4xl font-mono font-bold text-white mt-1">112</div>
+                    <div class="w-full bg-slate-700 h-1 mt-3 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full w-[95%]"></div></div>
+                    </div>
+                    <div class="bg-black/20 p-4 rounded-2xl border border-white/5">
+                    <span class="text-xs text-slate-500 font-mono uppercase">SAC</span>
+                    <div class="text-4xl font-mono font-bold text-emerald-400 mt-1">0.50073</div>
+                    <div class="w-full bg-slate-700 h-1 mt-3 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full w-[98%]"></div></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                    <div class="bg-slate-800/50 p-2 rounded-xl border border-white/5"><div class="text-slate-400 font-bold mb-1">BIC-NL</div><div class="text-emerald-300 font-mono">112</div></div>
+                    <div class="bg-slate-800/50 p-2 rounded-xl border border-white/5"><div class="text-slate-400 font-bold mb-1">BIC-SAC</div><div class="text-emerald-300 font-mono">0.502</div></div>
+                    <div class="bg-slate-800/50 p-2 rounded-xl border border-white/5"><div class="text-slate-400 font-bold mb-1">LAP</div><div class="text-blue-300 font-mono">0.062</div></div>
+                    <div class="bg-slate-800/50 p-2 rounded-xl border border-white/5"><div class="text-slate-400 font-bold mb-1">DAP</div><div class="text-blue-300 font-mono">0.015</div></div>
+                </div>
+                </div>
+            </section>
+            </div>
+            <div class="lg:col-span-5 space-y-4">
+            <div class="flex items-center gap-2 mb-2 px-1">
+                <h3 class="font-bold text-white text-sm uppercase tracking-wider">Kriteria Testing</h3>
+                <div class="h-px bg-slate-700 flex-grow"></div>
+            </div>
+            <div class="glass-panel p-5 rounded-2xl border-l-4 border-l-emerald-500">
+                <h4 class="font-bold text-white text-sm mb-1">Balance</h4>
+                <p class="text-slate-400 text-xs">Jumlah output bit 0 = bit 1 (128 masing-masing) untuk distribusi merata.</p>
+            </div>
+            <div class="glass-panel p-5 rounded-2xl border-l-4 border-l-blue-500">
+                <h4 class="font-bold text-white text-sm mb-1">Bijectivity</h4>
+                <p class="text-slate-400 text-xs">Setiap input memetakan ke output unik [0-255], menjamin reversibilitas.</p>
+            </div>
+            <div class="glass-panel p-5 rounded-2xl border-l-4 border-l-violet-500">
+                <h4 class="font-bold text-white text-sm mb-1">Cryptographic Strength</h4>
+                <p class="text-slate-400 text-xs">Diukur parameter ketat: NL, SAC, BIC, LAP, dan DAP.</p>
+            </div>
+            </div>
+        </div>
 
         <section class="glass-panel rounded-3xl p-1 shadow-2xl overflow-hidden mt-8">
             <div class="bg-slate-900/60 p-6 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -538,6 +607,111 @@
             </div>
             </div>
         </div>
+        </section>
+    </div>
+
+    <div id="tab-credits" class="hidden space-y-8 animate-fade-in">
+        <section class="glass-panel rounded-3xl p-8 mb-10">
+            <div class="text-center mb-16">
+                <div class="inline-flex items-center px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-medium mb-4">
+                    <span class="w-2 h-2 rounded-full bg-blue-500 mr-2 animate-pulse"></span>
+                    Meet The Team
+                </div>
+                <h2 class="text-4xl font-bold text-white mb-4">Kontributor Proyek</h2>
+                <p class="text-slate-400 max-w-2xl mx-auto text-sm">Tim yang berdedikasi dalam penelitian dan pengembangan modifikasi S-Box AES ini.</p>
+            </div>
+
+            <div class="grid grid-cols-1 gap-12 max-w-2xl mx-auto">
+                
+                <div class="team-card group bg-slate-800/50 rounded-[2.5rem] p-10 border border-white/5 hover:border-emerald-500/50 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center">
+                    <div class="relative mb-8">
+                        <div class="w-64 h-64 rounded-full p-3 border-4 border-slate-700 group-hover:border-emerald-500 transition-colors duration-300 bg-slate-900 overflow-hidden shadow-2xl">
+                            <img src="./Foto 1.jpeg" alt="Member 1" class="w-full h-full rounded-full object-cover aspect-square">
+                        </div>
+                    </div>
+                    
+                    <div class="z-10 w-full">
+                        <h3 class="text-3xl font-bold text-white mb-3 group-hover:text-emerald-400 transition-colors">Ridwan Fajariansyah</h3>
+                        <div class="inline-block bg-emerald-900/30 border border-emerald-500/20 px-6 py-2 rounded-full mb-6">
+                            <p class="text-base text-emerald-400 font-mono tracking-wider font-semibold">NIM: 2304130025</p>
+                        </div>
+                        <div class="h-px w-24 bg-emerald-500/30 mx-auto mb-6"></div>
+                        
+                    </div>
+                    
+                    <div class="absolute top-0 right-0 p-10 opacity-20 pointer-events-none transition-transform group-hover:scale-110 duration-700">
+                        <svg class="w-40 h-40 text-emerald-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path d="M12 14l9-5-9-5-9 5 9 5z"/></svg>
+                    </div>
+                </div>
+
+                <div class="team-card group bg-slate-800/50 rounded-[2.5rem] p-10 border border-white/5 hover:border-blue-500/50 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center">
+                    <div class="relative mb-8">
+                        <div class="w-64 h-64 rounded-full p-3 border-4 border-slate-700 group-hover:border-blue-500 transition-colors duration-300 bg-slate-900 overflow-hidden shadow-2xl">
+                            <img src="./Foto 2.jpg" alt="Member 2" class="w-full h-full rounded-full object-cover aspect-square">
+                        </div>
+                    </div>
+                    <div class="z-10 w-full">
+                        <h3 class="text-3xl font-bold text-white mb-3 group-hover:text-blue-400 transition-colors">Muhammad Najmuddin Faqih</h3>
+                        <div class="inline-block bg-blue-900/30 border border-blue-500/20 px-6 py-2 rounded-full mb-6">
+                            <p class="text-base text-blue-400 font-mono tracking-wider font-semibold">NIM: 2304130026</p>
+                        </div>
+                        <div class="h-px w-24 bg-blue-500/30 mx-auto mb-6"></div>
+                        
+                    </div>
+                    <div class="absolute top-0 right-0 p-10 opacity-20 pointer-events-none transition-transform group-hover:scale-110 duration-700">
+                        <svg class="w-40 h-40 text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                </div>
+
+                <div class="team-card group bg-slate-800/50 rounded-[2.5rem] p-10 border border-white/5 hover:border-purple-500/50 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center">
+                    <div class="relative mb-8">
+                        <div class="w-64 h-64 rounded-full p-3 border-4 border-slate-700 group-hover:border-purple-500 transition-colors duration-300 bg-slate-900 overflow-hidden shadow-2xl">
+                            <img src="./Foto 3.jpeg" alt="Member 3" class="w-full h-full rounded-full object-cover aspect-square">
+                        </div>
+                    </div>
+                    <div class="z-10 w-full">
+                        <h3 class="text-3xl font-bold text-white mb-3 group-hover:text-purple-400 transition-colors">Prayoga Adi Brata</h3>
+                        <div class="inline-block bg-purple-900/30 border border-purple-500/20 px-6 py-2 rounded-full mb-6">
+                            <p class="text-base text-purple-400 font-mono tracking-wider font-semibold">NIM: 2304130028</p>
+                        </div>
+                        <div class="h-px w-24 bg-purple-500/30 mx-auto mb-6"></div>
+                        
+                    </div>
+                    <div class="absolute top-0 right-0 p-10 opacity-20 pointer-events-none transition-transform group-hover:scale-110 duration-700">
+                        <svg class="w-40 h-40 text-purple-500" fill="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    </div>
+                </div>
+
+                <div class="team-card group bg-slate-800/50 rounded-[2.5rem] p-10 border border-white/5 hover:border-pink-500/50 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center">
+                    <div class="relative mb-8">
+                        <div class="w-64 h-64 rounded-full p-3 border-4 border-slate-700 group-hover:border-pink-500 transition-colors duration-300 bg-slate-900 overflow-hidden shadow-2xl">
+                            <img src="./Foto 4.jpeg" alt="Member 4" class="w-full h-full rounded-full object-cover aspect-square">
+                        </div>
+                    </div>
+                    <div class="z-10 w-full">
+                        <h3 class="text-3xl font-bold text-white mb-3 group-hover:text-pink-400 transition-colors">Indra Maulana Hasan</h3>
+                        <div class="inline-block bg-pink-900/30 border border-pink-500/20 px-6 py-2 rounded-full mb-6">
+                            <p class="text-base text-pink-400 font-mono tracking-wider font-semibold">NIM: 2304130034</p>
+                        </div>
+                        <div class="h-px w-24 bg-pink-500/30 mx-auto mb-6"></div>
+                        
+                    </div>
+                    <div class="absolute top-0 right-0 p-10 opacity-20 pointer-events-none transition-transform group-hover:scale-110 duration-700">
+                        <svg class="w-40 h-40 text-pink-500" fill="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+            </div>
+        </section>
+    </div>
+
+            </div>
+        </section>
+    </div>
+            </div>
         </section>
     </div>
 

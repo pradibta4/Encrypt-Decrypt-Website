@@ -1,5 +1,35 @@
-
 const API_BASE = "http://127.0.0.1:8000";
+
+// --- TAB SWITCHING LOGIC (NEW) ---
+function switchTab(tabName) {
+    // 1. Hide all contents
+    document.querySelectorAll('[id^="tab-"]').forEach(el => {
+        el.classList.add('hidden');
+        el.classList.remove('animate-fade-in'); // Reset animation
+    });
+
+    // 2. Reset all button styles
+    document.querySelectorAll('[id^="btn-"]').forEach(btn => {
+        btn.classList.remove('tab-active');
+        btn.classList.add('tab-inactive');
+    });
+
+    // 3. Show selected content
+    const target = document.getElementById(`tab-${tabName}`);
+    if (target) {
+        target.classList.remove('hidden');
+        setTimeout(() => target.classList.add('animate-fade-in'), 10);
+    }
+
+    // 4. Activate selected button
+    const btn = document.getElementById(`btn-${tabName}`);
+    if (btn) {
+        btn.classList.add('tab-active');
+        btn.classList.remove('tab-inactive');
+    }
+}
+
+// Default variables from previous code
 let currentSBox = null;
 let currentAffineMatrix = null;
 let standardSBox = null;
@@ -748,6 +778,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize format buttons
   updateFormatButtons('standard');
   updateFormatButtons('sbox44');
+  
+  // Initialize Default Tab
+  switchTab('dashboard');
 });
 
 // DOM refs
@@ -887,7 +920,6 @@ async function handleImageEncrypt() {
         const encryptedImg = document.getElementById('encrypted_img');
         if (encryptedImg) {
             encryptedImg.src = `data:image/png;base64,${data.encrypted_image_base64}`;
-            document.getElementById('encrypted_img_placeholder').classList.add('hidden');
         }
         
         // Display metrics - ORIGINAL AND ENCRYPTED SEPARATELY
@@ -903,9 +935,6 @@ async function handleImageEncrypt() {
         // Render histograms - TERPISAH (ORIGINAL DAN ENCRYPTED)
         renderHistogramOriginal(data.original_histogram);
         renderHistogramEncrypted(data.encrypted_histogram);
-        
-        // Show success message
-        showImageMessage('✅ Gambar berhasil dienkripsi!', 'success');
         
     } catch (err) {
         console.error('Full error object:', err);
@@ -996,375 +1025,53 @@ async function handleImageDecrypt() {
         const decryptedImg = document.getElementById('decrypted_img');
         decryptedImg.src = `data:image/png;base64,${data.decrypted_image_base64}`;
         
-        // Show success message
-        showImageMessage('✅ Gambar berhasil didekripsi!', 'success', 'dec_img');
-        
     } catch (err) {
         showError(decImgErrorMsg, err.message);
     }
 }
 
-function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => {
-            // Remove data:application/octet-stream;base64, prefix
-            const base64 = reader.result.split(',')[1];
-            resolve(base64);
-        };
-        reader.onerror = reject;
-    });
-}
-
-function renderHistogram(data, channel) {
-    const ctx = document.getElementById('histogram_chart').getContext('2d');
-    
-    // Destroy existing chart
-    if (histogramChart) {
-        histogramChart.destroy();
-    }
-    
-    const colorMap = {
-        'red': 'rgba(255, 99, 132, 0.8)',
-        'green': 'rgba(75, 192, 192, 0.8)',
-        'blue': 'rgba(54, 162, 235, 0.8)'
-    };
-    
-    const labels = Array.from({length: 256}, (_, i) => i.toString());
-    
-    histogramChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: `Channel ${channel}`,
-                data: data,
-                backgroundColor: colorMap[channel],
-                borderColor: colorMap[channel],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    display: false,
-                    grid: {
-                        display: false
-                    }
-                },
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    },
-                    ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)'
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    labels: {
-                        color: 'rgba(255, 255, 255, 0.7)'
-                    }
-                }
-            }
-        }
-    });
-}
-
-function renderHistogramComparison(originalData, encryptedData) {
-    const ctx = document.getElementById('histogram_chart').getContext('2d');
-    
-    // Destroy existing chart
-    if (histogramChart) {
-        histogramChart.destroy();
-    }
-    
-    const labels = Array.from({length: 256}, (_, i) => i.toString());
-    
-    // Extract RGB channels - originalData and encryptedData now have {R: [], G: [], B: []}
-    const origR = originalData.R || originalData.r || [];
-    const origG = originalData.G || originalData.g || [];
-    const origB = originalData.B || originalData.b || [];
-    
-    const encR = encryptedData.R || encryptedData.r || [];
-    const encG = encryptedData.G || encryptedData.g || [];
-    const encB = encryptedData.B || encryptedData.b || [];
-    
-    histogramChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Original R',
-                    data: origR,
-                    backgroundColor: 'rgba(255, 0, 0, 0.4)',
-                    borderColor: 'rgba(255, 0, 0, 0.8)',
-                    borderWidth: 0.5,
-                    hidden: false
-                },
-                {
-                    label: 'Original G',
-                    data: origG,
-                    backgroundColor: 'rgba(0, 255, 0, 0.4)',
-                    borderColor: 'rgba(0, 255, 0, 0.8)',
-                    borderWidth: 0.5,
-                    hidden: false
-                },
-                {
-                    label: 'Original B',
-                    data: origB,
-                    backgroundColor: 'rgba(0, 0, 255, 0.4)',
-                    borderColor: 'rgba(0, 0, 255, 0.8)',
-                    borderWidth: 0.5,
-                    hidden: false
-                },
-                {
-                    label: 'Encrypted R',
-                    data: encR,
-                    backgroundColor: 'rgba(255, 100, 100, 0.4)',
-                    borderColor: 'rgba(255, 100, 100, 0.8)',
-                    borderWidth: 0.5,
-                    hidden: true
-                },
-                {
-                    label: 'Encrypted G',
-                    data: encG,
-                    backgroundColor: 'rgba(100, 255, 100, 0.4)',
-                    borderColor: 'rgba(100, 255, 100, 0.8)',
-                    borderWidth: 0.5,
-                    hidden: true
-                },
-                {
-                    label: 'Encrypted B',
-                    data: encB,
-                    backgroundColor: 'rgba(100, 100, 255, 0.4)',
-                    borderColor: 'rgba(100, 100, 255, 0.8)',
-                    borderWidth: 0.5,
-                    hidden: true
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    display: false,
-                    grid: {
-                        display: false
-                    }
-                },
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    },
-                    ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)'
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    labels: {
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        padding: 15
-                    },
-                    position: 'top'
-                },
-                title: {
-                    display: true,
-                    text: 'Histogram Comparison (Red Channel)',
-                    color: 'rgba(255, 255, 255, 0.9)'
-                }
-            }
-        }
-    });
-}
-
 function renderHistogramOriginal(data) {
-    // data = {R: [...], G: [...], B: [...]}
     const ctx = document.getElementById('histogram_original');
     if (!ctx) return;
-    
-    if (histogramChartOriginal) {
-        histogramChartOriginal.destroy();
-    }
+    if (histogramChartOriginal) histogramChartOriginal.destroy();
     
     const labels = Array.from({length: 256}, (_, i) => i.toString());
-    const origR = data.R || data.r || [];
-    const origG = data.G || data.g || [];
-    const origB = data.B || data.b || [];
-    
     histogramChartOriginal = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels,
             datasets: [
-                {
-                    label: 'Red Channel',
-                    data: origR,
-                    backgroundColor: 'rgba(255, 0, 0, 0.5)',
-                    borderColor: 'rgba(255, 0, 0, 0.8)',
-                    borderWidth: 0.5,
-                },
-                {
-                    label: 'Green Channel',
-                    data: origG,
-                    backgroundColor: 'rgba(0, 255, 0, 0.5)',
-                    borderColor: 'rgba(0, 255, 0, 0.8)',
-                    borderWidth: 0.5,
-                },
-                {
-                    label: 'Blue Channel',
-                    data: origB,
-                    backgroundColor: 'rgba(0, 0, 255, 0.5)',
-                    borderColor: 'rgba(0, 0, 255, 0.8)',
-                    borderWidth: 0.5,
-                }
+                { label: 'R', data: data.R || data.r, backgroundColor: 'rgba(255, 0, 0, 0.5)' },
+                { label: 'G', data: data.G || data.g, backgroundColor: 'rgba(0, 255, 0, 0.5)' },
+                { label: 'B', data: data.B || data.b, backgroundColor: 'rgba(0, 0, 255, 0.5)' }
             ]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: { display: false, grid: { display: false } },
-                y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: 'rgba(255, 255, 255, 0.7)' } }
-            },
-            plugins: { legend: { labels: { color: 'rgba(255, 255, 255, 0.7)' } } }
-        }
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: {display:false}, y: {display:false} } }
     });
 }
 
 function renderHistogramEncrypted(data) {
-    // data = {R: [...], G: [...], B: [...]}
     const ctx = document.getElementById('histogram_encrypted');
     if (!ctx) return;
-    
-    if (histogramChartEncrypted) {
-        histogramChartEncrypted.destroy();
-    }
+    if (histogramChartEncrypted) histogramChartEncrypted.destroy();
     
     const labels = Array.from({length: 256}, (_, i) => i.toString());
-    const encR = data.R || data.r || [];
-    const encG = data.G || data.g || [];
-    const encB = data.B || data.b || [];
-    
     histogramChartEncrypted = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels,
             datasets: [
-                {
-                    label: 'Red Channel',
-                    data: encR,
-                    backgroundColor: 'rgba(255, 100, 100, 0.5)',
-                    borderColor: 'rgba(255, 100, 100, 0.8)',
-                    borderWidth: 0.5,
-                },
-                {
-                    label: 'Green Channel',
-                    data: encG,
-                    backgroundColor: 'rgba(100, 255, 100, 0.5)',
-                    borderColor: 'rgba(100, 255, 100, 0.8)',
-                    borderWidth: 0.5,
-                },
-                {
-                    label: 'Blue Channel',
-                    data: encB,
-                    backgroundColor: 'rgba(100, 100, 255, 0.5)',
-                    borderColor: 'rgba(100, 100, 255, 0.8)',
-                    borderWidth: 0.5,
-                }
+                { label: 'R', data: data.R || data.r, backgroundColor: 'rgba(255, 100, 100, 0.5)' },
+                { label: 'G', data: data.G || data.g, backgroundColor: 'rgba(100, 255, 100, 0.5)' },
+                { label: 'B', data: data.B || data.b, backgroundColor: 'rgba(100, 100, 255, 0.5)' }
             ]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: { display: false, grid: { display: false } },
-                y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: 'rgba(255, 255, 255, 0.7)' } }
-            },
-            plugins: { legend: { labels: { color: 'rgba(255, 255, 255, 0.7)' } } }
-        }
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: {display:false}, y: {display:false} } }
     });
 }
 
-function downloadEncryptedImage() {
-    if (!currentEncryptedImageBase64) {
-        alert("Tidak ada data terenkripsi");
-        return;
-    }
-
-    const a = document.createElement('a');
-    a.href = `data:image/png;base64,${currentEncryptedImageBase64}`;
-    a.download = `encrypted_image_${Date.now()}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-}
-
-
-function downloadDecryptedImage() {
-    const img = document.getElementById('decrypted_img');
-    if (!img.src) {
-        alert("Tidak ada gambar terdekripsi");
-        return;
-    }
-    
-    const a = document.createElement('a');
-    a.href = img.src;
-    a.download = `decrypted_image_${Date.now()}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-}
-
-function base64ToBlob(base64, contentType = '') {
-    const byteCharacters = atob(base64);
-    const byteArrays = [];
-    
-    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-        const slice = byteCharacters.slice(offset, offset + 512);
-        
-        const byteNumbers = new Array(slice.length);
-        for (let i = 0; i < slice.length; i++) {
-            byteNumbers[i] = slice.charCodeAt(i);
-        }
-        
-        const byteArray = new Uint8Array(byteNumbers);
-        byteArrays.push(byteArray);
-    }
-    
-    return new Blob(byteArrays, {type: contentType});
-}
-
-function showImageMessage(message, type = 'info', prefix = 'img') {
-    const msgEl = document.getElementById(`${prefix}_error_msg`);
-    msgEl.textContent = message;
-    msgEl.classList.remove('hidden', 'text-red-400', 'text-green-400');
-    
-    if (type === 'success') {
-        msgEl.classList.add('text-green-400');
-    } else {
-        msgEl.classList.add('text-red-400');
-    }
-    
-    // Auto hide after 5 seconds
-    setTimeout(() => {
-        msgEl.textContent = '';
-        msgEl.classList.add('hidden');
-    }, 5000);
-}
-
-// Add event listeners for image section
 document.addEventListener("DOMContentLoaded", () => {
+    // ... (Event listeners dari kode asli Anda) ...
     // Image encryption
     const imgModeSelect = document.getElementById('img_mode');
     const imgSboxWrapper = document.getElementById('img-sbox-wrapper');
@@ -1409,77 +1116,31 @@ document.addEventListener("DOMContentLoaded", () => {
     if (imgDecryptBtn) {
         imgDecryptBtn.addEventListener('click', handleImageDecrypt);
     }
-    
-    // Histogram buttons
-    const histRedBtn = document.getElementById('hist_red_btn');
-    const histGreenBtn = document.getElementById('hist_green_btn');
-    const histBlueBtn = document.getElementById('hist_blue_btn');
-    
-    if (histRedBtn) {
-        histRedBtn.addEventListener('click', () => {
-            if (currentImageMetrics) {
-                renderHistogram(currentImageMetrics.histogram_data.red, 'red');
-            }
-        });
-    }
-    
-    if (histGreenBtn) {
-        histGreenBtn.addEventListener('click', () => {
-            if (currentImageMetrics) {
-                renderHistogram(currentImageMetrics.histogram_data.green, 'green');
-            }
-        });
-    }
-    
-    if (histBlueBtn) {
-        histBlueBtn.addEventListener('click', () => {
-            if (currentImageMetrics) {
-                renderHistogram(currentImageMetrics.histogram_data.blue, 'blue');
-            }
-        });
-    }
-    
+
     // Download buttons
     const downloadEncryptedBtn = document.getElementById('download_encrypted_btn');
     const downloadDecryptedBtn = document.getElementById('download_decrypted_btn');
-    const clearDecBtn = document.getElementById('clear_dec_btn');
     
     if (downloadEncryptedBtn) {
-        downloadEncryptedBtn.addEventListener('click', downloadEncryptedImage);
-    }
-    
-    if (downloadDecryptedBtn) {
-        downloadDecryptedBtn.addEventListener('click', downloadDecryptedImage);
-    }
-    
-    if (clearDecBtn) {
-        clearDecBtn.addEventListener('click', () => {
-            document.getElementById('dec_img_results').classList.add('hidden');
-            document.getElementById('dec_img_upload').value = '';
-            document.getElementById('dec_img_base64').value = '';
+        downloadEncryptedBtn.addEventListener('click', () => {
+             const a = document.createElement('a');
+            a.href = `data:image/png;base64,${currentEncryptedImageBase64}`;
+            a.download = `encrypted_image_${Date.now()}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         });
     }
     
-    // Copy metrics button
-    const copyMetricsBtn = document.getElementById('copy_metrics_btn');
-    if (copyMetricsBtn) {
-        copyMetricsBtn.addEventListener('click', () => {
-            if (!currentImageMetrics) {
-                alert("Tidak ada metrics untuk disalin");
-                return;
-            }
-            
-            const metricsText = `Image Encryption Metrics:
-Entropy: ${currentImageMetrics.entropy}
-NPR: ${currentImageMetrics.npr}%
-UACI: ${currentImageMetrics.uaci}%
-NPCR: ${currentImageMetrics.npcr}%
-Mode: ${currentImageMetrics.used_mode}
-Image Size: ${currentImageMetrics.image_size.width}x${currentImageMetrics.image_size.height}`;
-            
-            navigator.clipboard.writeText(metricsText).then(() => {
-                showImageMessage('✅ Metrics copied to clipboard!', 'success');
-            });
+    if (downloadDecryptedBtn) {
+        downloadDecryptedBtn.addEventListener('click', () => {
+            const img = document.getElementById('decrypted_img');
+            const a = document.createElement('a');
+            a.href = img.src;
+            a.download = `decrypted_image_${Date.now()}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         });
     }
 });

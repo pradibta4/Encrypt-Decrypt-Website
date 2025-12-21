@@ -158,10 +158,11 @@
                     <div class="w-10 h-10 mx-auto bg-slate-900 border-2 border-emerald-500 text-emerald-400 rounded-full flex items-center justify-center font-bold text-lg mb-4 z-10 relative shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-transform group-hover:scale-110">1</div>
                     <div class="bg-slate-800/40 p-5 rounded-xl border border-emerald-500/30 hover:bg-slate-800 transition-colors text-left h-full">
                         <h3 class="text-emerald-400 font-bold mb-3 text-sm">Irreducible Polynomial</h3>
-                        <p class="text-slate-300 text-[11px] leading-relaxed mb-3">Menggunakan polinomial irreducible AES standar:</p>
+                        <p class="text-slate-300 text-[11px] leading-relaxed mb-3">Menggunakan polinomial irreducible AES standar dalam GF(2⁸):</p>
                         <div class="px-3 py-2 bg-slate-900/80 rounded border border-emerald-500/20 text-emerald-300 font-mono text-[10px] text-center">
                             x⁸ + x⁴ + x³ + x + 1
                         </div>
+                        <p class="text-slate-400 text-[10px] mt-2">Dasar operasi arithmetic modular</p>
                     </div>
                 </div>
 
@@ -169,7 +170,10 @@
                     <div class="w-10 h-10 mx-auto bg-slate-900 border-2 border-blue-500 text-blue-400 rounded-full flex items-center justify-center font-bold text-lg mb-4 z-10 relative shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-transform group-hover:scale-110">2</div>
                     <div class="bg-slate-800/40 p-5 rounded-xl border border-blue-500/30 hover:bg-slate-800 transition-colors text-left h-full">
                         <h3 class="text-blue-400 font-bold mb-3 text-sm">Multiplicative Inverse</h3>
-                        <p class="text-slate-300 text-[11px] leading-relaxed">Membentuk tabel invers multiplikatif 256 elemen dalam GF(2⁸) menggunakan polinomial dari Step 1</p>
+                        <p class="text-slate-300 text-[11px] leading-relaxed mb-2">Membentuk tabel invers multiplikatif 256 elemen dalam GF(2⁸) menggunakan polinomial dari Step 1.</p>
+                        <div class="px-2 py-2 bg-slate-900/80 rounded border border-blue-500/20 text-blue-300 font-mono text-[10px] text-center">
+                            a · a⁻¹ ≡ 1 (mod p(x))
+                        </div>
                     </div>
                 </div>
 
@@ -177,19 +181,92 @@
                     <div class="w-10 h-10 mx-auto bg-slate-900 border-2 border-violet-500 text-violet-400 rounded-full flex items-center justify-center font-bold text-lg mb-4 z-10 relative shadow-[0_0_15px_rgba(139,92,246,0.3)] transition-transform group-hover:scale-110">3</div>
                     <div class="bg-slate-800/40 p-5 rounded-xl border border-violet-500/30 hover:bg-slate-800 transition-colors text-left h-full">
                         <h3 class="text-violet-400 font-bold mb-3 text-sm">Affine Matrix Exploration</h3>
-                        <p class="text-slate-300 text-[11px] leading-relaxed mb-2">Eksplorasi 2⁶⁴ (18+ quintillion) matriks affine 8×8. Dari eksplorasi ini, hanya 128 matriks yang memenuhi kriteria <strong class="text-white">balance</strong> dan <strong class="text-white">bijectivity</strong>.</p>
+                        <p class="text-slate-300 text-[11px] leading-relaxed mb-2">Eksplorasi <strong class="text-white">2⁶⁴</strong> (18+ quintillion) matriks affine 8×8 binary. Dari eksplorasi ini, hanya <strong class="text-violet-300">128 matriks</strong> yang memenuhi kriteria:</p>
+                        <div class="flex gap-1 mt-2">
+                            <span class="px-2 py-1 bg-violet-500/20 rounded text-[9px] text-violet-300 font-mono">Balance</span>
+                            <span class="px-2 py-1 bg-violet-500/20 rounded text-[9px] text-violet-300 font-mono">Bijectivity</span>
+                        </div>
                     </div>
                 </div>
 
                 <div class="group relative">
                     <div class="w-10 h-10 mx-auto bg-slate-900 border-2 border-pink-500 text-pink-400 rounded-full flex items-center justify-center font-bold text-lg mb-4 z-10 relative shadow-[0_0_15px_rgba(236,72,153,0.3)] transition-transform group-hover:scale-110">4</div>
                     <div class="bg-slate-800/40 p-5 rounded-xl border border-pink-500/30 hover:bg-slate-800 transition-colors text-left h-full">
-                        <h3 class="text-pink-400 font-bold mb-3 text-sm">Affine Transformation</h3>
-                        <p class="text-slate-300 text-[11px] leading-relaxed mb-2">Transformasi affine:</p>
+                        <h3 class="text-pink-400 font-bold mb-3 text-sm">Affine Transformation & Selection</h3>
+                        <p class="text-slate-300 text-[11px] leading-relaxed mb-2">Transformasi affine pada invers multiplikatif:</p>
                         <div class="px-2 py-2 bg-slate-900/80 rounded border border-pink-500/20 text-pink-300 font-mono text-[9px] text-center mb-2">
-                            B(X) = K₄₄ · X⁻¹ + C_AES (mod 2)
+                            B(X) = K₄₄ · X⁻¹ ⊕ C_AES (mod 2)
                         </div>
-                        <p class="text-slate-300 text-[11px] leading-relaxed">Menghasilkan <strong class="text-white">S-box 44</strong> dengan metrik terbaik</p>
+                        <p class="text-slate-300 text-[11px] leading-relaxed">Pilih <strong class="text-white">S-box 44</strong> dengan metrik kriptografi terbaik (NL, SAC, BIC)</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- New Section: S-Box 44 Results & Testing Criteria -->
+        <section class="space-y-6">
+            <div class="flex items-center gap-3 px-1">
+                <div class="p-2 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-lg border border-emerald-500/20">
+                    <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                <h2 class="text-xl font-bold text-white tracking-wide">Hasil Evaluasi S-Box 44</h2>
+                <div class="h-px bg-slate-700 flex-grow"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-7 flex flex-col">
+                    <section class="glass-panel rounded-3xl p-1 h-full relative overflow-hidden group">
+                        <div class="absolute -top-24 -right-24 w-64 h-64 bg-emerald-500/20 rounded-full blur-[80px] group-hover:bg-emerald-500/30 transition-all duration-1000"></div>
+                        <div class="bg-slate-900/60 h-full rounded-[20px] p-8 border border-white/5 flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-8">
+                                <div>
+                                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-widest mb-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Best Performance
+                                    </div>
+                                    <h3 class="text-2xl font-bold text-white">Hasil Metrik S-Box 44</h3>
+                                    <p class="text-slate-400 text-sm mt-1">Paper: Alamsyah et al. (2024)</p>
+                                </div>
+                                <div class="p-3 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-xl border border-emerald-500/20">
+                                    <svg class="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mb-6">
+                                <div class="bg-black/20 p-4 rounded-2xl border border-white/5">
+                                    <span class="text-xs text-slate-500 font-mono uppercase">Nonlinearity (NL)</span>
+                                    <div class="text-4xl font-mono font-bold text-white mt-1">112</div>
+                                    <div class="w-full bg-slate-700 h-1 mt-3 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full w-[95%]"></div></div>
+                                </div>
+                                <div class="bg-black/20 p-4 rounded-2xl border border-white/5">
+                                    <span class="text-xs text-slate-500 font-mono uppercase">SAC</span>
+                                    <div class="text-4xl font-mono font-bold text-emerald-400 mt-1">0.50073</div>
+                                    <div class="w-full bg-slate-700 h-1 mt-3 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full w-[98%]"></div></div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                                <div class="bg-slate-800/50 p-2 rounded-xl border border-white/5"><div class="text-slate-400 font-bold mb-1">BIC-NL</div><div class="text-emerald-300 font-mono">112</div></div>
+                                <div class="bg-slate-800/50 p-2 rounded-xl border border-white/5"><div class="text-slate-400 font-bold mb-1">BIC-SAC</div><div class="text-emerald-300 font-mono">0.502</div></div>
+                                <div class="bg-slate-800/50 p-2 rounded-xl border border-white/5"><div class="text-slate-400 font-bold mb-1">LAP</div><div class="text-blue-300 font-mono">0.062</div></div>
+                                <div class="bg-slate-800/50 p-2 rounded-xl border border-white/5"><div class="text-slate-400 font-bold mb-1">DAP</div><div class="text-blue-300 font-mono">0.015</div></div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="flex items-center gap-2 mb-2 px-1">
+                        <h3 class="font-bold text-white text-sm uppercase tracking-wider">Kriteria Testing</h3>
+                        <div class="h-px bg-slate-700 flex-grow"></div>
+                    </div>
+                    <div class="glass-panel p-5 rounded-2xl border-l-4 border-l-emerald-500">
+                        <h4 class="font-bold text-white text-sm mb-1">Balance</h4>
+                        <p class="text-slate-400 text-xs">Jumlah output bit 0 = bit 1 (128 masing-masing) untuk distribusi merata.</p>
+                    </div>
+                    <div class="glass-panel p-5 rounded-2xl border-l-4 border-l-blue-500">
+                        <h4 class="font-bold text-white text-sm mb-1">Bijectivity</h4>
+                        <p class="text-slate-400 text-xs">Setiap input memetakan ke output unik [0-255], menjamin reversibilitas.</p>
+                    </div>
+                    <div class="glass-panel p-5 rounded-2xl border-l-4 border-l-violet-500">
+                        <h4 class="font-bold text-white text-sm mb-1">Cryptographic Strength</h4>
+                        <p class="text-slate-400 text-xs">Diukur parameter ketat: NL, SAC, BIC, LAP, dan DAP.</p>
                     </div>
                 </div>
             </div>
@@ -505,6 +582,12 @@
 
             <section class="glass-panel rounded-3xl p-8 relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+                <div id="dec_img_loader" class="hidden absolute inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-20">
+                    <div class="flex items-center gap-3 text-indigo-100 text-sm font-semibold">
+                        <span class="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></span>
+                        <span>Mendekripsi gambar...</span>
+                    </div>
+                </div>
                 <div class="flex items-center justify-between mb-6">
                     <h2 class="text-lg font-bold text-white flex items-center gap-2"><span class="w-1.5 h-6 bg-indigo-500 rounded-full"></span> Decrypt Image</h2>
                     <span class="text-[10px] font-mono text-indigo-400 bg-indigo-900/30 px-2 py-1 rounded border border-indigo-500/30">/img-dec</span>
@@ -531,9 +614,18 @@
                         <textarea id="dec_img_sbox_input" rows="2" class="w-full glass-input text-[10px] font-mono rounded-xl px-3 py-2 border-amber-500/30" placeholder="[99, 124, ...]"></textarea>
                     </div>
 
-                    <div class="relative">
-                        <input type="file" id="dec_img_upload" accept="image/png,image/jpeg,.png,.jpg,.jpeg" class="w-full glass-input text-xs rounded-xl px-3 py-2 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-500/20 file:text-indigo-400 hover:file:bg-indigo-500/30"/>
-                        <p class="text-[10px] text-slate-500 mt-1 ml-1">Upload Encrypted Image (PNG Recommended)</p>
+                    <div class="relative group upload-area border-2 border-dashed border-slate-600 rounded-xl p-6 text-center transition-colors">
+                        <input type="file" id="dec_img_upload" accept="image/png,image/jpeg,.png,.jpg,.jpeg" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                        <div class="space-y-2 pointer-events-none">
+                            <div class="w-10 h-10 mx-auto bg-slate-700/50 rounded-full flex items-center justify-center text-indigo-400 group-hover:text-indigo-300 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </div>
+                            <p class="text-sm text-slate-300">Klik atau seret encrypted image</p>
+                            <p class="text-[10px] text-slate-500">PNG/JPG • Disarankan PNG hasil enkripsi</p>
+                        </div>
+                    </div>
+                    <div id="dec_img_preview" class="hidden text-center bg-black/20 p-2 rounded-lg border border-white/5">
+                        <img id="dec_img_preview_img" class="max-h-32 mx-auto rounded shadow-sm" />
                     </div>
 
                     <button id="img_decrypt_btn" type="button" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold text-sm shadow-lg shadow-indigo-900/40 hover:scale-[1.02] transition-transform">DECRYPT IMAGE</button>

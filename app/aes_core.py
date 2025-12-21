@@ -311,13 +311,22 @@ def inv_mix_columns(state: List[List[int]]) -> List[List[int]]:
 
 
 def pkcs7_unpad(data: bytes, block_size: int = 16) -> bytes:
-    if not data or len(data) % block_size != 0:
+    if not data:
+        raise ValueError("Data kosong, tidak bisa di-unpad.")
+    if len(data) % block_size != 0:
         raise ValueError("Data ciphertext tidak kelipatan blok, tidak valid.")
+    
     pad_len = data[-1]
+    
+    # Validasi pad_len
     if pad_len < 1 or pad_len > block_size:
         raise ValueError("Padding tidak valid.")
-    if data[-pad_len:] != bytes([pad_len] * pad_len):
+    
+    # Validasi bahwa semua byte padding konsisten
+    padding_bytes = data[-pad_len:]
+    if not all(b == pad_len for b in padding_bytes):
         raise ValueError("Padding bytes tidak konsisten.")
+    
     return data[:-pad_len]
 
 

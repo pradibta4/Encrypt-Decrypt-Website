@@ -1,4 +1,4 @@
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "https://starless-gastight-kynlee.ngrok-free.dev";
 
 // --- TAB SWITCHING LOGIC (NEW) ---
 function switchTab(tabName) {

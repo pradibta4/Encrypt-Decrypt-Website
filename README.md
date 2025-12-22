@@ -2,7 +2,7 @@
 
 Implementasi enkripsi–dekripsi gambar berbasis substitusi byte menggunakan S-Box dari AES serta S-Box hasil modifikasi berbasis eksplorasi matriks afin (affine matrices). Proyek ini mengacu pada dua paper berikut dan menyediakan metrik evaluasi citra serta analisis histogram kanal RGB:
 
-- AES S-box modification uses affine matrices exploration for increased S-box strength — Nonlinear Dynamics (2024). DOI: https://doi.org/10.1007/s11071-024-10414-3
+- AES S-box modification uses affine matrices exploration for increased S-box strength — Nonlinear Dynamics (2025). DOI: https://doi.org/10.1007/s11071-024-10414-3
 - S-box Construction on AES Algorithm using Affine Matrix Modification to Improve Image Encryption — Scientific Journal of Informatics (2023). DOI: 10.15294/sji.v10i2.42305
 
 Mode yang didukung:
@@ -150,7 +150,7 @@ GET /sbox/paper44    # S-Box 44 dari paper
 
 ## 📖 Referensi Paper
 
-1) AES S-box modification uses affine matrices exploration for increased S-box strength — Nonlinear Dynamics (2024)
+1) AES S-box modification uses affine matrices exploration for increased S-box strength — Nonlinear Dynamics (2025)
 - DOI: https://doi.org/10.1007/s11071-024-10414-3
 
 2) S-box Construction on AES Algorithm using Affine Matrix Modification to Improve Image Encryption — Scientific Journal of Informatics (2023)

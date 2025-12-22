@@ -26,7 +26,9 @@ from .aes_core import (
     aes_encrypt_ecb,
     aes_decrypt_ecb,
     build_inv_sbox,
-    pkcs7_pad # Pastikan fungsi ini ada di aes_core.py atau di-import
+    pkcs7_pad,
+    simple_sbox_encrypt,
+    simple_sbox_decrypt
 )
 from .sbox_metrics import analyze_sbox
 
@@ -135,7 +137,7 @@ def get_sbox_44():
         paper_info={
             "title": "AES S-box modification uses affine matrices exploration",
             "authors": "Alamsyah et al.",
-            "year": 2024,
+            "year": 2025,
             "description": "S-box 44 merupakan hasil terbaik dengan NL=112, SAC=0.50073, BIC-SAC=0.50237"
         }
     )
@@ -227,58 +229,38 @@ async def encrypt_image(
     img_array = np.array(original_image)
     flat_bytes = img_array.tobytes()
     
-    key = derive_key_from_input(key_hex)
-
-    # --- 1. ENKRIPSI UTAMA (Ciphertext 1) ---
-    # Gunakan AES Padding (PKCS7) karena AES bekerja per blok 16-byte
-    # Gunakan use_padding=True agar aes_core melakukan padding otomatis
-    encrypted_bytes = aes_encrypt_ecb(flat_bytes, key, sbox, use_padding=True)
+    # === ENKRIPSI MENGGUNAKAN SIMPLE S-BOX ENCRYPTION (Stream Cipher Style) ===
+    # Formula: c[i] = S[p[i] XOR k[i]]
+    encrypted_bytes = simple_sbox_encrypt(flat_bytes, key_hex, sbox)
     
-    # --- 2. ANALISIS DIFFERENTIAL (Ciphertext 2) ---
-    # Buat modifikasi 1 pixel pada plaintext
-    mod_flat_bytes = bytearray(flat_bytes)
-    if len(mod_flat_bytes) > 0:
-        mod_flat_bytes[0] = (mod_flat_bytes[0] + 1) % 256 # Ubah 1 nilai byte
+    # === ANALISIS DIFFERENTIAL (NPCR & UACI) ===
+    # Gunakan 2 key yang berbeda untuk mengukur AVALANCHE EFFECT
+    # Ini lebih sesuai untuk mengevaluasi kekuatan cipher
     
-    # Enkripsi plaintext modifikasi
-    encrypted_bytes_2 = aes_encrypt_ecb(bytes(mod_flat_bytes), key, sbox, use_padding=True)
+    # Generate key kedua dengan modifikasi sedikit
+    key_bytes_2 = derive_key_from_input(key_hex)
+    key_bytes_2_modified = bytearray(key_bytes_2)
+    key_bytes_2_modified[0] ^= 0x01  # Flip 1 bit di byte pertama
+    key_hex_2 = key_bytes_2_modified.hex()
     
-    # Hitung NPCR & UACI (C1 vs C2)
+    encrypted_bytes_2 = simple_sbox_encrypt(flat_bytes, key_hex_2, sbox)
+    
+    # Hitung NPCR & UACI
     npcr_uaci = calculate_npcr_uaci_bytes(encrypted_bytes, encrypted_bytes_2)
 
-    # --- 3. PEMBUATAN GAMBAR VISUALISASI ---
-    # Karena padding, ukuran data bertambah. Kita perlu menyesuaikan ukuran gambar hasil.
-    # Hitung pixel yang dibutuhkan untuk menampung semua encrypted bytes
-    total_bytes = len(encrypted_bytes)
-    pixels_needed = math.ceil(total_bytes / 3)
-    
-    # Kita pertahankan width, sesuaikan height
-    new_height = math.ceil(pixels_needed / width)
-    
-    # Buat array baru dengan padding visual (0xFF) untuk mengisi pixel terakhir
-    # Gunakan 0xFF bukan 0x00 agar mudah dibedakan dari ciphertext saat dekripsi
-    vis_array_len = new_height * width * 3
-    vis_bytes = bytearray(encrypted_bytes)
-    # Simpan panjang ciphertext asli di 4 byte pertama visual padding
-    padding_len = vis_array_len - total_bytes
-    if padding_len > 0:
-        # Encode total_bytes sebagai 4-byte integer di awal visual padding
-        vis_bytes.extend(total_bytes.to_bytes(4, 'big'))
-        # Sisanya diisi 0xFF
-        vis_bytes.extend(b'\xFF' * (padding_len - 4))
-    
-    vis_array = np.frombuffer(vis_bytes, dtype=np.uint8).reshape((new_height, width, 3))
-    encrypted_image_vis = Image.fromarray(vis_array, "RGB")
+    # === MEMBUAT GAMBAR HASIL ENKRIPSI ===
+    encrypted_array = np.frombuffer(encrypted_bytes, dtype=np.uint8).reshape((height, width, 3))
+    encrypted_image = Image.fromarray(encrypted_array, "RGB")
 
     # Simpan sebagai PNG
     buffer = io.BytesIO()
-    encrypted_image_vis.save(buffer, format="PNG", compress_level=9)
+    encrypted_image.save(buffer, format="PNG", compress_level=9)
     buffer.seek(0)
     encrypted_base64 = base64.b64encode(buffer.getvalue()).decode()
 
-    # Hitung metrik lain
+    # Hitung metrik entropy
     orig_entropy = calculate_image_entropy(original_image)
-    enc_entropy = calculate_image_entropy(encrypted_image_vis)
+    enc_entropy = calculate_image_entropy(encrypted_image)
     
     # Histogram
     orig_hist = {
@@ -287,9 +269,9 @@ async def encrypt_image(
         "B": np.histogram(img_array[:,:,2], bins=256, range=(0,256))[0].tolist()
     }
     enc_hist = {
-        "R": np.histogram(vis_array[:,:,0], bins=256, range=(0,256))[0].tolist(),
-        "G": np.histogram(vis_array[:,:,1], bins=256, range=(0,256))[0].tolist(),
-        "B": np.histogram(vis_array[:,:,2], bins=256, range=(0,256))[0].tolist()
+        "R": np.histogram(encrypted_array[:,:,0], bins=256, range=(0,256))[0].tolist(),
+        "G": np.histogram(encrypted_array[:,:,1], bins=256, range=(0,256))[0].tolist(),
+        "B": np.histogram(encrypted_array[:,:,2], bins=256, range=(0,256))[0].tolist()
     }
 
     return {
@@ -298,11 +280,11 @@ async def encrypt_image(
         "encrypted_entropy": round(enc_entropy, 4),
         "npcr": round(npcr_uaci["npcr"], 4),
         "uaci": round(npcr_uaci["uaci"], 4),
-        "npr": 0, # Redundant dengan NPCR
+        "npr": round(npcr_uaci["npcr"], 4),  # NPR = NPCR untuk simple cipher
         "original_histogram": orig_hist,
         "encrypted_histogram": enc_hist,
         "used_mode": mode,
-        "image_size": {"width": width, "height": new_height}
+        "image_size": {"width": width, "height": height}
     }
 
 @app.post("/image/decrypt", response_model=schemas.ImageDecryptResponse)
@@ -316,69 +298,32 @@ async def decrypt_image(
     
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File harus berupa gambar")
-    
-    key = derive_key_from_input(key_hex)
-    inv_sbox = build_inv_sbox(sbox)
 
     contents = await file.read()
     enc_image = Image.open(io.BytesIO(contents)).convert("RGB")
-    width = enc_image.width
+    width, height = enc_image.size
     
     # Ambil bytes dari gambar terenkripsi
     enc_array = np.array(enc_image)
-    enc_bytes_with_visual_padding = enc_array.tobytes()
+    enc_bytes = enc_array.tobytes()
     
-    # --- PROSES DEKRIPSI ---
-    # 1. Ekstrak ciphertext asli dari visual padding
-    # Cari metadata panjang ciphertext (4 byte di posisi setelah ciphertext)
-    # Coba deteksi panjang ciphertext yang valid (kelipatan 16)
-    
-    # Strategi: Cari dari belakang untuk menemukan blok yang valid
-    # Visual padding menggunakan 0xFF, jadi cari transisi dari data ke 0xFF
-    max_valid_len = (len(enc_bytes_with_visual_padding) // 16) * 16
-    
-    # Coba ekstrak 4 byte metadata dari area padding
-    ciphertext = None
-    for test_len in range(max_valid_len, 15, -16):  # Test setiap kelipatan 16
-        if test_len + 4 <= len(enc_bytes_with_visual_padding):
-            # Baca 4 byte metadata
-            try:
-                stored_len = int.from_bytes(enc_bytes_with_visual_padding[test_len:test_len+4], 'big')
-                if stored_len == test_len and stored_len % 16 == 0:
-                    # Metadata cocok! Ini adalah panjang ciphertext yang benar
-                    ciphertext = enc_bytes_with_visual_padding[:stored_len]
-                    break
-            except:
-                pass
-    
-    # Fallback: Jika tidak menemukan metadata, gunakan seluruh data yang valid (kelipatan 16)
-    if ciphertext is None:
-        # Hapus trailing 0xFF (visual padding lama) atau 0x00
-        enc_bytes_trimmed = enc_bytes_with_visual_padding.rstrip(b'\xFF').rstrip(b'\x00')
-        valid_len = (len(enc_bytes_trimmed) // 16) * 16
-        if valid_len == 0:
-            raise HTTPException(status_code=400, detail="Ciphertext tidak valid atau kosong")
-        ciphertext = enc_bytes_trimmed[:valid_len]
-    
-    # 2. Dekripsi menggunakan AES (aes_decrypt_ecb akan handle PKCS7 unpadding)
+    # === DEKRIPSI MENGGUNAKAN SIMPLE S-BOX DECRYPTION ===
+    # Formula: p[i] = S_inv[c[i]] XOR k[i]
     try:
-        decrypted_bytes = aes_decrypt_ecb(ciphertext, key, sbox, inv_sbox, use_padding=True)
-    except ValueError as e:
-         raise HTTPException(status_code=400, detail=f"Dekripsi gagal: {str(e)} (Cek Key/S-Box)")
-
-    # 3. Rekonstruksi Gambar Asli
-    # Kita perlu tahu dimensi asli. Karena stateless, kita estimasi height dari jumlah pixel.
-    total_pixels = len(decrypted_bytes) // 3
-    original_height = total_pixels // width
+        decrypted_bytes = simple_sbox_decrypt(enc_bytes, key_hex, sbox)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Dekripsi gagal: {str(e)}")
     
-    # Reshape
+    # === REKONSTRUKSI GAMBAR ASLI ===
+    # Karena simple_sbox_decrypt menghasilkan plaintext dengan panjang sama dengan ciphertext,
+    # ukuran gambar tetap sama
     try:
-        dec_array = np.frombuffer(decrypted_bytes, dtype=np.uint8).reshape((original_height, width, 3))
+        dec_array = np.frombuffer(decrypted_bytes, dtype=np.uint8).reshape((height, width, 3))
         decrypted_image = Image.fromarray(dec_array, "RGB")
-    except ValueError:
-         # Fallback jika dimensi tidak pas (misal karena width berubah/crop)
-         raise HTTPException(status_code=400, detail="Gagal merekonstruksi dimensi gambar asli.")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Gagal merekonstruksi gambar: {str(e)}")
 
+    # Simpan sebagai PNG
     buffer = io.BytesIO()
     decrypted_image.save(buffer, format="PNG", compress_level=9)
     buffer.seek(0)

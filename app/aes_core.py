@@ -249,6 +249,71 @@ def aes_encrypt_ecb(plaintext: bytes, key: bytes, sbox: List[int], use_padding: 
     return bytes(out)
 
 
+def simple_sbox_encrypt(plaintext: bytes, key: bytes, sbox: List[int]) -> bytes:
+    """
+    Simple stream cipher using S-Box substitution per byte.
+    Cocok untuk image encryption tanpa padding.
+    
+    Enkripsi: c_i = S[p_i XOR k_i]
+    Di mana k_i adalah keystream derived dari key.
+    """
+    key = derive_key_from_input(key) if isinstance(key, str) else key
+    keystream = bytearray()
+    
+    # Generate keystream dengan menggandakan key sesuai panjang plaintext
+    plaintext_len = len(plaintext)
+    counter = 0
+    while len(keystream) < plaintext_len:
+        # Hash key dengan counter untuk generate keystream
+        counter_bytes = counter.to_bytes(4, 'big')
+        keystream.extend(hashlib.sha256(key + counter_bytes).digest())
+        counter += 1
+    
+    keystream = keystream[:plaintext_len]
+    
+    # Enkripsi: c[i] = sbox[p[i] XOR k[i]]
+    ciphertext = bytearray()
+    for p_byte, k_byte in zip(plaintext, keystream):
+        xor_val = p_byte ^ k_byte
+        c_byte = sbox[xor_val]
+        ciphertext.append(c_byte)
+    
+    return bytes(ciphertext)
+
+
+def simple_sbox_decrypt(ciphertext: bytes, key: bytes, sbox: List[int]) -> bytes:
+    """
+    Decrypt menggunakan inverse S-Box.
+    
+    Dekripsi: p_i = (S_inv[c_i]) XOR k_i
+    """
+    key = derive_key_from_input(key) if isinstance(key, str) else key
+    
+    # Build inverse S-Box
+    inv_sbox = [0] * 256
+    for i, val in enumerate(sbox):
+        inv_sbox[val] = i
+    
+    keystream = bytearray()
+    ciphertext_len = len(ciphertext)
+    counter = 0
+    while len(keystream) < ciphertext_len:
+        counter_bytes = counter.to_bytes(4, 'big')
+        keystream.extend(hashlib.sha256(key + counter_bytes).digest())
+        counter += 1
+    
+    keystream = keystream[:ciphertext_len]
+    
+    # Dekripsi: p[i] = S_inv[c[i]] XOR k[i]
+    plaintext = bytearray()
+    for c_byte, k_byte in zip(ciphertext, keystream):
+        inv_val = inv_sbox[c_byte]
+        p_byte = inv_val ^ k_byte
+        plaintext.append(p_byte)
+    
+    return bytes(plaintext)
+
+
 def encrypt_text_to_hex(
     plaintext: str,
     key_input: str,
